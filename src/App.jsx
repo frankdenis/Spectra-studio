@@ -3,6 +3,10 @@ import AvatarRenderer from './components/AvatarRenderer'
 import VideoStream from './components/VideoStream'
 import { createRoom, getConnectionHealth } from './api/realtimeAPI'
 import { createRealtimeSync } from './services/RealtimeSync'
+import AuthScreen from './components/AuthScreen'
+import AdminDashboard from './components/AdminDashboard'
+import { supabase } from './lib/supabase'
+import { isAdminUser } from './adminConfig'
 
 const navItems = [
   { label: 'Dashboard', icon: '⌂' },
@@ -67,6 +71,24 @@ function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify }) {
 }
 
 export default function App() {
+  const [session, setSession] = useState(undefined)
+  const [showAdmin, setShowAdmin] = useState(false)
+
+  useEffect(() => {
+    if (!supabase) { setSession(null); return }
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession))
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  const signOut = async () => {
+    if (supabase) await supabase.auth.signOut()
+    setShowAdmin(false)
+  }
+
+  if (session === undefined) return <main className="auth-screen"><div className="auth-card"><span className="auth-kicker">SPECTRA STUDIO</span><h1>Securing your workspace…</h1></div></main>
+  if (!session) return <AuthScreen onAuthenticated={(nextSession) => setSession(nextSession)} />
+  if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
   const [activeNav, setActiveNav] = useState('Dashboard')
   const [isLive, setIsLive] = useState(true)
   const [cameraEnabled, setCameraEnabled] = useState(false)
@@ -126,7 +148,7 @@ export default function App() {
           <button type="button" className="nav-item" onClick={() => notify('Library sync is complete.')}><Icon>⌑</Icon><span>Shared library</span></button>
           <button type="button" className="nav-item" onClick={() => notify('Settings are ready to configure.')}><Icon>⚙</Icon><span>Settings</span></button>
         </nav>
-        <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row"><div className="profile-avatar">AS</div><div><strong>Adrian Stone</strong><span>Workspace owner</span></div><button type="button" aria-label="Account menu">•••</button></div></div>
+        <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row"><div className="profile-avatar">AS</div><div><strong>Adrian Stone</strong><span>Workspace owner</span></div><button type="button" aria-label="Account menu" onClick={() => isAdminUser(session.user) ? setShowAdmin(true) : notify("Account controls are available in Settings.")}>•••</button></div></div>
       </aside>
 
       <main className="main-canvas">
