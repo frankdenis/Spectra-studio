@@ -37,7 +37,7 @@ export default async function handler(req, res) {
 
   if (type === 'image') {
     if (!process.env.OPENAI_API_KEY) {
-      await admin.from('generations').update({ status: 'blocked', error_message: 'Image provider is not configured on the server.' }).eq('id', generationId)
+      await admin.from('generations').update({ status: 'failed', error_message: 'Image provider is not configured on the server.' }).eq('id', generationId)
       return json(res, 503, { error: 'Image generation provider is not configured yet.' })
     }
 
