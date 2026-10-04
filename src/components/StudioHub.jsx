@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import VoiceStudio from './VoiceStudio'
+import StudioModule from './StudioModule'
 
 const sections = {
   'Create': [
@@ -67,6 +68,7 @@ export default function StudioHub({ section = 'Create', user, onBack, onNotify }
   }
 
   if(active && (active[1]==='voice'||active[1]==='voice_clone')) return <VoiceStudio mode={active[1]==='voice_clone'?'clone':'tts'} user={user} onBack={()=>setActive(null)} onNotify={onNotify} />
+  if(active) return <StudioModule type={active[1]} user={user} onBack={()=>setActive(null)} onNotify={onNotify} />
 
   const title = section === 'Create' ? 'Create anything with Spectra.' : section === 'Communicate' ? 'Talk, meet and create together.' : 'Everything you create, organized.'
 
