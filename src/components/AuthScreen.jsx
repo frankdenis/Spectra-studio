@@ -160,7 +160,7 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'signin' }) 
 
       {mode === 'reset' && <button className="auth-switch" type="button" onClick={()=>switchMode('signin')}>Back to sign in</button>}
 
-      {mode !== 'forgot' && mode !== 'reset' && <button className="auth-switch" type="button" onClick={()=>switchMode(mode==='signin'?'signup':'signin')}>{mode==='signin' ? 'Need an account? Create one' : 'Already registered? Sign in'}</button>}
+      {mode !== 'forgot' && mode !== 'reset' && <div className="auth-mode-tabs"><button type="button" className={mode==='signin' ? 'is-active' : ''} onClick={()=>switchMode('signin')}>Sign in</button><button type="button" className={mode==='signup' ? 'is-active' : ''} onClick={()=>switchMode('signup')}>Create account</button></div>}
     </div>
   </main>
 }
