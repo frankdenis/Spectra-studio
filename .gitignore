@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+.npm/
+uploads/
+pdf-pages/
+.DS_Store
+*.log
+.env
+.env.*

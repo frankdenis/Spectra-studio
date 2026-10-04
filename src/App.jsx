@@ -1,0 +1,157 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import AvatarRenderer from './components/AvatarRenderer'
+import VideoStream from './components/VideoStream'
+import { createRoom, getConnectionHealth } from './api/realtimeAPI'
+import { createRealtimeSync } from './services/RealtimeSync'
+
+const navItems = [
+  { label: 'Dashboard', icon: '⌂' },
+  { label: 'Live rooms', icon: '◉', count: 2 },
+  { label: 'People', icon: '◎' },
+  { label: 'Insights', icon: '⌁' },
+  { label: 'Recordings', icon: '▣' },
+]
+
+const sessions = [
+  { name: 'Product discovery', guest: 'Nadia Okafor', time: 'Today · 11:30', type: 'AI room', color: 'coral', state: 'Ready' },
+  { name: 'Creative direction', guest: 'Marcus Lee', time: 'Today · 14:00', type: 'Private', color: 'violet', state: 'Scheduled' },
+  { name: 'Weekly reflection', guest: 'Jules Martin', time: 'Tomorrow · 09:15', type: 'AI room', color: 'blue', state: 'Draft' },
+  { name: 'Team pulse', guest: 'Arc / Studio', time: 'Fri · 16:00', type: 'Private', color: 'mint', state: 'Scheduled' },
+]
+
+function Icon({ children }) {
+  return <span className="ui-icon" aria-hidden="true">{children}</span>
+}
+
+function MetricCard({ label, value, detail, tone = 'purple', children }) {
+  return (
+    <div className={`metric-card metric-card--${tone}`}>
+      <div className="metric-label"><span>{label}</span><span className="metric-arrow">↗</span></div>
+      <div className="metric-value">{value}</div>
+      <div className="metric-detail">{detail}</div>
+      {children}
+    </div>
+  )
+}
+
+function SparkBars({ color = 'purple' }) {
+  return <div className={`mini-bars mini-bars--${color}`} aria-hidden="true">{[32, 46, 38, 64, 53, 76, 61, 86, 68, 92, 76, 96].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div>
+}
+
+function Activity({ icon, title, text, time, tone }) {
+  return <div className="activity-item"><div className={`activity-icon activity-icon--${tone}`}>{icon}</div><div className="activity-copy"><strong>{title}</strong><span>{text}</span></div><time>{time}</time></div>
+}
+
+function SignalPill({ children, tone = 'green' }) {
+  return <span className={`signal-pill signal-pill--${tone}`}><i />{children}</span>
+}
+
+function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify }) {
+  const panelData = {
+    'Live rooms': { eyebrow: 'LIVE STUDIO', title: 'Rooms that stay in the moment.', copy: 'Open, monitor, and shape every active AI conversation from one place.' },
+    People: { eyebrow: 'PEOPLE', title: 'Your conversation circle.', copy: 'Guests, collaborators, and recurring voices in one calm workspace.' },
+    Insights: { eyebrow: 'INSIGHTS', title: 'See what creates presence.', copy: 'A clear view of room quality, attention, and realtime performance.' },
+    Recordings: { eyebrow: 'RECORDINGS', title: 'Every good moment, remembered.', copy: 'Review recent room captures and transcript highlights.' },
+  }
+  const data = panelData[activeNav] || panelData['Live rooms']
+
+  return (
+    <section className="workspace-panel">
+      <div className="workspace-panel-head"><div><div className="eyebrow"><span className="eyebrow-line" /> {data.eyebrow}</div><h1>{data.title}</h1><p>{data.copy}</p></div><button type="button" className="ghost-button" onClick={onBack}>← Back to dashboard</button></div>
+      {activeNav === 'Live rooms' && <div className="panel-grid"><div className="panel-feature"><div className="panel-feature-top"><SignalPill>Live now</SignalPill><span>PHOENIX / 001</span></div><AvatarRenderer name="Aurora" mood="focused" compact /><div className="panel-feature-copy"><strong>Aurora / presence room</strong><span>01 participant · {data.copy}</span></div><button type="button" className="primary-button" onClick={onLaunch}>Open live room <span>↗</span></button></div><div className="panel-list"><div className="panel-list-head"><strong>Upcoming rooms</strong><button type="button" onClick={onInvite}>＋ Invite guest</button></div>{sessions.map((session) => <button type="button" className="panel-row" key={session.name} onClick={() => onNotify(`${session.name} is ready to open.`)}><span className={`session-avatar session-avatar--${session.color}`}>{session.guest.split(' ').map(n => n[0]).join('')}</span><span><strong>{session.name}</strong><small>{session.guest} · {session.time}</small></span><span className="panel-row-arrow">↗</span></button>)}</div></div>}
+      {activeNav === 'People' && <div className="panel-grid panel-grid--people"><div className="people-card"><div className="people-card-title"><strong>Active collaborators</strong><SignalPill>4 online</SignalPill></div>{['Adrian Stone','Nadia Okafor','Marcus Lee','Jules Martin'].map((person, index) => <button type="button" className="person-row" key={person} onClick={() => onNotify(`${person} is available to invite.`)}><span className={`session-avatar session-avatar--${['mint','coral','violet','blue'][index]}`}>{person.split(' ').map(n => n[0]).join('')}</span><span><strong>{person}</strong><small>{index === 0 ? 'Workspace owner' : 'Last seen today'}</small></span><span className="person-state">● online</span></button>)}</div><div className="panel-feature panel-feature--soft"><span className="panel-icon">＋</span><strong>Bring someone into the room.</strong><p>Share a private link. No account required.</p><button type="button" className="primary-button" onClick={onInvite}>Create invite <span>↗</span></button></div></div>}
+      {activeNav === 'Insights' && <div className="insights-panel"><div className="insight-card insight-card--purple"><span>AVG. PRESENCE</span><strong>96.8%</strong><small>+4.2% this week</small><div className="insight-line" /></div><div className="insight-card insight-card--mint"><span>ROOM HEALTH</span><strong>99.97%</strong><small>All systems nominal</small><div className="insight-line" /></div><div className="insight-card insight-card--blue"><span>LISTENING TIME</span><strong>18h 42m</strong><small>Across 23 rooms</small><div className="insight-line" /></div></div>}
+      {activeNav === 'Recordings' && <div className="recordings-panel">{['Product discovery','Creative direction','Weekly reflection'].map((recording, index) => <button type="button" className="recording-row" key={recording} onClick={() => onNotify(`${recording} recording is opening.`)}><span className="recording-play">▶</span><span><strong>{recording}</strong><small>{index === 0 ? 'Today · 42:18' : index === 1 ? 'Yesterday · 28:04' : 'Sep 30 · 16:22'}</small></span><span className="recording-arrow">↗</span></button>)}</div>}
+    </section>
+  )
+}
+
+export default function App() {
+  const [activeNav, setActiveNav] = useState('Dashboard')
+  const [isLive, setIsLive] = useState(true)
+  const [cameraEnabled, setCameraEnabled] = useState(false)
+  const [expression, setExpression] = useState('Focused')
+  const [voiceMode, setVoiceMode] = useState(true)
+  const [showInvite, setShowInvite] = useState(false)
+  const [showToast, setShowToast] = useState(false)
+  const [presence, setPresence] = useState(96)
+  const [room, setRoom] = useState(() => createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' }))
+  const [health, setHealth] = useState(getConnectionHealth())
+
+  useEffect(() => {
+    const sync = createRealtimeSync({ onEvent: (event) => { if (event.type === 'presence') setPresence(event.value) } })
+    sync.connect()
+    const healthTimer = setInterval(() => setHealth(getConnectionHealth()), 5000)
+    return () => { sync.disconnect(); clearInterval(healthTimer) }
+  }, [])
+
+  const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()), [])
+
+  const notify = (message = 'Your workspace is up to date.') => {
+    setShowToast(message)
+    window.setTimeout(() => setShowToast(false), 3200)
+  }
+
+  const launchRoom = () => {
+    const nextRoom = createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' })
+    setRoom(nextRoom)
+    setIsLive(true)
+    notify('Your live room is ready.')
+  }
+
+  const openRoom = () => {
+    setActiveNav('Dashboard')
+    setIsLive(true)
+    window.setTimeout(() => document.querySelector('.stream-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
+  }
+
+  const navClick = (label) => {
+    setActiveNav(label)
+    if (label !== 'Dashboard') notify(`${label} is connected to your workspace.`)
+  }
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand-lockup"><span className="brand-mark"><i /><i /><i /></span><span>helio<span className="brand-dot">.</span></span></div>
+        <div className="workspace-switcher"><div className="workspace-avatar">A</div><div><b>Arc / Studio</b><span>Personal workspace</span></div><span className="chevron">⌄</span></div>
+        <nav className="primary-nav" aria-label="Primary navigation">
+          <span className="nav-label">Workspace</span>
+          {navItems.map((item) => <button type="button" key={item.label} className={`nav-item ${activeNav === item.label ? 'is-active' : ''}`} onClick={() => navClick(item.label)}><Icon>{item.icon}</Icon><span>{item.label}</span>{item.count && <em className="nav-count">{item.count}</em>}</button>)}
+        </nav>
+        <div className="sidebar-rule" />
+        <nav className="primary-nav" aria-label="Tools navigation">
+          <span className="nav-label">Studio</span>
+          <button type="button" className="nav-item" onClick={() => setShowInvite(true)}><Icon>＋</Icon><span>Invite someone</span></button>
+          <button type="button" className="nav-item" onClick={() => notify('Library sync is complete.')}><Icon>⌑</Icon><span>Shared library</span></button>
+          <button type="button" className="nav-item" onClick={() => notify('Settings are ready to configure.')}><Icon>⚙</Icon><span>Settings</span></button>
+        </nav>
+        <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row"><div className="profile-avatar">AS</div><div><strong>Adrian Stone</strong><span>Workspace owner</span></div><button type="button" aria-label="Account menu">•••</button></div></div>
+      </aside>
+
+      <main className="main-canvas">
+        <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><i /><i /><i /></span></div><div className="search-box"><span>⌕</span><input aria-label="Search" placeholder="Search rooms, guests, or transcripts..." /></div><div className="top-actions"><span className="date-readout">{dateLabel}</span><button type="button" className="icon-button notification-button" aria-label="Notifications">♧<i /></button><button type="button" className="language-button"><span className="globe">◎</span> EN <span>⌄</span></button><div className="top-profile"><div className="profile-avatar">AS</div><div><span>Good morning</span><strong>Adrian</strong></div><span className="chevron">⌄</span></div></div></header>
+
+        <div className={`page-content ${activeNav !== 'Dashboard' ? 'page-content--inner-view' : ''}`}>
+          {activeNav !== 'Dashboard' && <WorkspacePanel activeNav={activeNav} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> WELCOME BACK, GOOD MORNING <span className="sunmark">✦</span></div><h1>Your presence, <em>in focus.</em></h1><p>Design better conversations with a little more room to be human.</p></div><div className="status-summary"><span className="status-pulse" /> All systems operational <span className="status-divider" /> Phoenix v1.4</div></section>
+
+          <section className="hero-room">
+            <div className="hero-copy"><div className="hero-copy-kicker"><span className="sparkle-icon">✦</span> A NEW KIND OF VIDEO ROOM</div><h2>Make every<br />conversation feel <span>closer.</span></h2><p>Meet Aurora, your realtime AI presence designed to listen, reflect, and move the conversation forward.</p><div className="hero-actions"><button type="button" className="primary-button" onClick={launchRoom}>{isLive ? 'Open live room' : 'Launch live room'} <span>↗</span></button><button type="button" className="ghost-button" onClick={() => setShowInvite(true)}>Invite a guest <span>＋</span></button></div><div className="hero-meta"><span><i className="meta-icon">◉</i> Phoenix engine</span><span><i className="meta-icon">⌁</i> Multimodal</span><span><i className="meta-icon">◌</i> Private by default</span></div></div>
+            <div className="hero-visual"><div className="visual-glow" /><div className="visual-grid" /><div className="visual-label visual-label--top"><span className="live-dot" /> LIVE ROOM / 001 <span>4K · 60 FPS</span></div><AvatarRenderer name="Aurora" mood={expression.toLowerCase()} /><div className="orbit orbit--one" /><div className="orbit orbit--two" /><div className="hero-status-card"><div className="hero-status-heading"><span>Presence quality</span><span>LIVE</span></div><div className="quality-row"><strong>{presence}%</strong><div className="quality-meter"><i style={{ width: `${presence}%` }} /></div></div><span>Listening with intention</span></div><div className="visual-label visual-label--bottom"><span className="wave-mini"><i /><i /><i /><i /><i /></span> Encrypted · Low latency</div></div>
+          </section>
+
+          <section className="metrics-grid"><MetricCard label="Live rooms" value="03" detail="+2 this week" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={`${presence}.8%`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="99.97%" detail={`${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
+
+          <div className="dashboard-split"><VideoStream cameraEnabled={cameraEnabled} onCameraToggle={setCameraEnabled} expression={expression} onOpenRoom={openRoom} /><aside className="signal-side"><div className="signal-side-heading"><div><div className="section-kicker"><span className="section-index">02</span><span>Signal monitor</span></div><h3>Everything<br /><em>in sync.</em></h3></div><SignalPill>Live</SignalPill></div><div className="signal-summary"><div className="signal-summary-top"><span>CONNECTION QUALITY</span><strong>{health.status.toUpperCase()}</strong></div><div className="signal-waveform">{[30, 56, 43, 75, 48, 91, 57, 35, 65, 85, 47, 72, 37, 59, 81, 44, 63, 31, 55, 77].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div><div className="signal-time"><span>00:12:42</span><span>{health.latencyMs}ms latency</span></div></div><div className="conversation-card"><div className="conversation-top"><span>Latest exchange</span><button type="button" onClick={() => notify('Transcript is ready to review.')}>View transcript ↗</button></div><div className="quote-mark">“</div><p>We could make the first moment feel less like an introduction, and more like an <em>arrival.</em></p><div className="transcript-by"><span className="mini-avatar">AS</span><span>Adrian · just now</span><span className="confidence">98% clear</span></div></div><div className="signal-footer"><span><span className="secure-icon">✦</span> End-to-end encrypted</span><button type="button" onClick={() => setVoiceMode(!voiceMode)} className={`voice-toggle ${voiceMode ? 'is-on' : ''}`}><span>{voiceMode ? 'Voice mode' : 'Text mode'}</span><i /></button></div></aside></div>
+
+          <section className="bottom-grid"><div className="sessions-card"><div className="card-heading"><div><div className="section-kicker"><span className="section-index">03</span><span>Upcoming</span></div><h3>Your rooms</h3></div><button type="button" className="view-all" onClick={() => navClick('Live rooms')}>View all <span>↗</span></button></div><div className="session-list">{sessions.map((session) => <div className="session-row" key={session.name}><div className={`session-avatar session-avatar--${session.color}`}>{session.guest.split(' ').map(n => n[0]).join('')}</div><div className="session-main"><strong>{session.name}</strong><span>{session.guest} <i /> {session.time}</span></div><span className={`session-type session-type--${session.type === 'AI room' ? 'ai' : 'private'}`}>{session.type}</span><span className={`session-state session-state--${session.state.toLowerCase()}`}><i /> {session.state}</span><button type="button" className="row-more" aria-label={`More options for ${session.name}`}>•••</button></div>)}</div></div><div className="activity-card"><div className="card-heading"><div><div className="section-kicker"><span className="section-index">04</span><span>Pulse</span></div><h3>Recent activity</h3></div><button type="button" className="more-button" aria-label="More activity options">•••</button></div><div className="activity-list"><Activity icon="↗" title="Room exported" text="Creative direction" time="12m" tone="violet" /><Activity icon="✦" title="Phoenix updated" text="New presence model" time="1h" tone="lime" /><Activity icon="◉" title="New room created" text="Product discovery" time="3h" tone="blue" /></div></div></section>
+        </div>
+        <footer className="page-footer"><span>HELIO / A PLACE FOR PRESENCE</span><span>Build 1.4.0 <i /> Lagos, NG</span></footer>
+      </main>
+
+      {showInvite && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowInvite(false)}><div className="invite-modal"><button className="modal-close" type="button" onClick={() => setShowInvite(false)}>×</button><div className="modal-orb"><span>＋</span></div><div className="eyebrow"><span className="eyebrow-line" /> ADD A HUMAN</div><h2>Bring someone<br /><em>into the room.</em></h2><p>Share a private link. They can join from any browser, no account required.</p><label className="input-label">Guest email or name<input type="text" placeholder="someone@studio.com" autoFocus /></label><button type="button" className="primary-button modal-submit" onClick={() => { setShowInvite(false); notify('Your invite link is ready.') }}>Create invite link <span>↗</span></button><span className="modal-footnote">The room stays private until you share the link.</span></div></div>}
+      {showToast && <div className="toast"><span className="toast-check">✓</span><div><strong>{typeof showToast === 'string' ? showToast : 'Your workspace is ready.'}</strong><span>{isLive ? `Room ${room?.id ?? 'live'} · encrypted connection` : 'This view is connected to your workspace.'}</span></div><button type="button" onClick={() => setShowToast(false)}>×</button></div>}
+    </div>
+  )
+}

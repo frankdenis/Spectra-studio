@@ -1,0 +1,14 @@
+{
+  "name": "Helio — Realtime AI Video Rooms",
+  "short_name": "Helio",
+  "description": "A high-presence realtime AI video room workspace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#5422b7",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
