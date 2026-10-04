@@ -74,25 +74,10 @@ function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify, sessi
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [showAdmin, setShowAdmin] = useState(false)\n  const [sessions, setSessions] = useState([])
-
-  useEffect(() => {
-    if (!supabase) { setSession(null); return }
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession))
-    return () => listener.subscription.unsubscribe()
-  }, [])
-
-  const signOut = async () => {
-    if (supabase) await supabase.auth.signOut()
-    setShowAdmin(false)
-  }
-
-  if (session === undefined) return <main className="auth-screen"><div className="auth-card"><span className="auth-kicker">SPECTRA STUDIO</span><h1>Securing your workspace…</h1></div></main>
-  if (!session) return <AuthScreen onAuthenticated={(nextSession) => setSession(nextSession)} />
-  if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
+  const [showAdmin, setShowAdmin] = useState(false)
+  const [sessions, setSessions] = useState([])
   const [activeNav, setActiveNav] = useState('Dashboard')
-  const [isLive, setIsLive] = useState(true)
+  const [isLive, setIsLive] = useState(false)
   const [cameraEnabled, setCameraEnabled] = useState(false)
   const [expression, setExpression] = useState('Focused')
   const [voiceMode, setVoiceMode] = useState(true)
@@ -103,11 +88,60 @@ export default function App() {
   const [health, setHealth] = useState(getConnectionHealth())
 
   useEffect(() => {
-    const sync = createRealtimeSync({ roomId: room?.id, onEvent: (event) => { if (event.type === 'presence') setPresence(event.value) } })
-    sync.connect()
-    const healthTimer = setInterval(() => setHealth(getConnectionHealth()), 5000)
-    return () => { sync.disconnect(); clearInterval(healthTimer) }
+    if (!supabase) { setSession(null); return }
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession))
+    return () => listener.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!supabase || !session) return
+    supabase.from('rooms').select('id,title,status,created_at').order('created_at', { ascending: false }).limit(10).then(({ data }) => {
+      if (data) setSessions(data.map(row => ({ name: row.title, guest: 'Private room', time: new Date(row.created_at).toLocaleString(), type: 'Private', color: 'violet', state: row.status })))
+    })
+  }, [session])
+
+  useEffect(() => {
+    const sync = createRealtimeSync({ roomId: room?.id, onEvent: (event) => {
+      if (event.type === 'presence') setPresence(event.value)
+    }})
+    sync.connect()
+    return () => { sync.disconnect() }
+  }, [room?.id])
+
+  const signOut = async () => {
+    if (supabase) await supabase.auth.signOut()
+    setShowAdmin(false)
+  }
+
+  const notify = (message = 'Your workspace is up to date.') => {
+    setShowToast(message)
+    window.setTimeout(() => setShowToast(false), 3200)
+  }
+
+  const launchRoom = async () => {
+    try {
+      const nextRoom = await createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' })
+      setRoom(nextRoom)
+      setIsLive(true)
+      setSessions(current => [{ name: nextRoom.title, guest: 'Private room', time: new Date(nextRoom.createdAt).toLocaleString(), type: 'Private', color: 'violet', state: nextRoom.status }, ...current])
+      notify('Your live room was created.')
+    } catch (error) { notify(error.message || 'Room creation failed.') }
+  }
+
+  const openRoom = () => {
+    setActiveNav('Dashboard')
+    if (!room) return notify('Create a live room first.')
+    window.setTimeout(() => document.querySelector('.stream-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
+  }
+
+  const navClick = (label) => {
+    setActiveNav(label)
+  }
+
+  if (session === undefined) return <main className="auth-screen"><div className="auth-card"><span className="auth-kicker">SPECTRA STUDIO</span><h1>Securing your workspace…</h1></div></main>
+  if (!session) return <AuthScreen onAuthenticated={(nextSession) => setSession(nextSession)} />
+  if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
 
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()), [])
 
