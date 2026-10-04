@@ -12,7 +12,7 @@ export default async function handler(req,res){
   const body=typeof req.body==='string'?JSON.parse(req.body||'{}'):req.body||{}
   if(!body.text||typeof body.text!=='string') return res.status(400).json({error:'Text is required.'})
   if(body.text.length>20000) return res.status(400).json({error:'Text exceeds the supported request size.'})
-  const payload={text:body.text,voice_engine:body.voice_engine||'Play3.0-mini',voice:body.voice||undefined,output_format:body.output_format||'mp3',speed:body.speed||1,quality:body.quality||'high'}
+  const limits=await supabase.from('user_limits').select('unlimited,monthly_voice_minutes').eq('user_id',user.id).maybeSingle(); if(limits.error||!limits.data)return res.status(403).json({error:'Usage limits are not configured for this account.'}); if(!limits.data.unlimited&&Number(limits.data.monthly_voice_minutes||0)<=0)return res.status(402).json({error:'Your voice allowance is exhausted.'}); const payload={text:body.text,voice_engine:body.voice_engine||'Play3.0-mini',voice:body.voice||undefined,output_format:body.output_format||'mp3',speed:body.speed||1,quality:body.quality||'high'}
   Object.keys(payload).forEach(k=>payload[k]===undefined&&delete payload[k])
   const upstream=await fetch('https://api.play.ht/api/v2/tts/stream',{method:'POST',headers:{'X-USER-ID':process.env.PLAY_HT_USER_ID,'AUTHORIZATION':process.env.PLAY_HT_API_KEY,'accept':'audio/mpeg','content-type':'application/json'},body:JSON.stringify(payload)})
   if(!upstream.ok){const detail=await upstream.text();return res.status(upstream.status).json({error:'PlayHT request failed.',detail:detail.slice(0,1000)})}
