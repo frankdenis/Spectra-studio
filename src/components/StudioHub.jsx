@@ -11,6 +11,7 @@ const sections = {
     ['Voice Studio','voice','Generate natural speech and manage voices.'],
     ['Voice Cloner','voice_clone','Create a voice model from audio you own or have permission to use.'],
     ['AI Avatar','avatar','Build a photorealistic AI identity from source media.'],
+    ['AI Characters','character','Create reusable AI characters with identity, personality, voice and visual direction.'],
   ],
   'Communicate': [
     ['Audio Calls','audio','Private realtime audio rooms with recording and transcription.'],
@@ -21,6 +22,9 @@ const sections = {
   'Library': [
     ['Projects','projects','All your creation projects in one place.'],
     ['Media Library','library','Images, video, audio, voices and identity assets.'],
+    ['My Avatars','avatar_library','Manage your authorized AI identities.'],
+    ['My Voices','voice_library','Manage stock and custom voice models.'],
+    ['Characters','character_library','Manage reusable AI characters.'],
   ],
 }
 
