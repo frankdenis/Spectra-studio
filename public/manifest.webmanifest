@@ -1,14 +1,21 @@
 {
-  "name": "Helio — Realtime AI Video Rooms",
-  "short_name": "Helio",
-  "description": "A high-presence realtime AI video room workspace.",
+  "name": "Spectra Studio — Realtime AI Video Workspace",
+  "short_name": "Spectra Studio",
+  "description": "Realtime AI video rooms with AI presence, collaboration, recordings, and multimodal interaction.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#f6f8fc",
   "theme_color": "#5422b7",
   "orientation": "any",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "communication", "social"],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
