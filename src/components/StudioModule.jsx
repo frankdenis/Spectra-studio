@@ -71,7 +71,7 @@ export default function StudioModule({ type, user, onBack, onNotify }) {
           if(fn?.url)setPreview(fn.url)
           onNotify?.('Generation submitted to the configured provider.')
         }catch(providerError){
-          await supabase.from('generations').update({status:'blocked',error_message:'No production generation provider is configured.'}).eq('id',data.id)
+          await supabase.from('generations').update({status:'failed',error_message:'No production generation provider is configured.'}).eq('id',data.id)
           onNotify?.('Generation record created, but no production media provider is configured yet. No fake output was created.')
         }
       } else {
