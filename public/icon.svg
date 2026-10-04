@@ -1,5 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="42" fill="#5422b7"/>
-  <circle cx="96" cy="96" r="57" fill="none" stroke="#a9f0ec" stroke-width="10" opacity=".9"/>
-  <path d="M67 118V76h14v42H67Zm22 0V61h14v57H89Zm22 0V83h14v35h-14Z" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title>Spectra Studio</title>
+  <desc>Abstract Spectra Studio mark representing an AI lens and realtime signal.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5422b7"/>
+      <stop offset="1" stop-color="#28105f"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#a9f0ec"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="166" fill="none" stroke="#a9f0ec" stroke-width="18" opacity=".24"/>
+  <circle cx="256" cy="256" r="134" fill="none" stroke="#ffffff" stroke-width="7" opacity=".16"/>
+  <path d="M154 336V176h38v160h-38Zm67 0V132h38v204h-38Zm67 0V198h38v138h-38Z" fill="url(#signal)"/>
+  <circle cx="256" cy="256" r="20" fill="#ffffff"/>
 </svg>
