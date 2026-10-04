@@ -1,5 +1,12 @@
 import React from 'react'
 import FaceCamera from './FaceCamera.jsx'
+import { useEffect, useRef } from 'react'
+
+function RemoteVideo({ stream }) {
+  const ref = useRef(null)
+  useEffect(() => { if (ref.current) ref.current.srcObject = stream || null }, [stream])
+  return <video ref={ref} autoPlay playsInline />
+}
 
 export default function VideoStream({ cameraEnabled, onCameraToggle, onOpenRoom, remoteStream = null }) {
   return (
@@ -8,7 +15,7 @@ export default function VideoStream({ cameraEnabled, onCameraToggle, onOpenRoom,
       <div className="stream-grid">
         <div className="stream-tile stream-tile--ai">
           <div className="tile-topline"><span>AI PARTICIPANT</span><span>{remoteStream ? 'LIVE' : 'WAITING'}</span></div>
-          <div className="remote-video-frame">{remoteStream ? <video autoPlay playsInline srcObject={remoteStream} /> : <div className="provider-waiting">AI video participant will appear when the realtime provider connects.</div>}</div>
+          <div className="remote-video-frame">{remoteStream ? <RemoteVideo stream={remoteStream} /> : <div className="provider-waiting">AI video participant will appear when the realtime provider connects.</div>}</div>
           <div className="tile-bottomline"><span>AI identity <em>realtime participant</em></span><span className="speaking"><i /> {remoteStream ? 'Live' : 'Waiting'}</span></div>
         </div>
         <div className="stream-tile stream-tile--camera"><FaceCamera enabled={cameraEnabled} onToggle={onCameraToggle} /></div>
