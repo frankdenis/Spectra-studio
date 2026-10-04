@@ -194,7 +194,7 @@ export default function App() {
 
         <div className={`page-content ${activeNav !== 'Dashboard' ? 'page-content--inner-view' : ''}`}>
           {activeNav === 'Identity Lab' && <IdentityLab user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
-          {['Create','Communicate','Library'].includes(activeNav) && <StudioHub section={activeNav} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Create','Communicate','Library'].includes(activeNav) && <StudioHub section={activeNav} user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
           {['Profile','Settings'].includes(activeNav) && <AccountCenter mode={activeNav} user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
           {['Live rooms','People','Insights','Recordings'].includes(activeNav) && <WorkspacePanel activeNav={activeNav} sessions={sessions} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
           {activeNav === 'Dashboard' && <>
