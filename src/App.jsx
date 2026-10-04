@@ -5,6 +5,7 @@ import { createRoom, getConnectionHealth } from './api/realtimeAPI'
 import { createRealtimeSync } from './services/RealtimeSync'
 import AuthScreen from './components/AuthScreen'
 import AdminDashboard from './components/AdminDashboard'
+import IdentityLab from './components/IdentityLab'
 import { supabase } from './lib/supabase'
 import { isAdminUser } from './adminConfig'
 
@@ -14,6 +15,7 @@ const navItems = [
   { label: 'People', icon: '◎' },
   { label: 'Insights', icon: '⌁' },
   { label: 'Recordings', icon: '▣' },
+  { label: 'Identity Lab', icon: '◈' },
 ]
 
 const sessions = [
@@ -155,7 +157,8 @@ export default function App() {
         <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><i /><i /><i /></span></div><div className="search-box"><span>⌕</span><input aria-label="Search" placeholder="Search rooms, guests, or transcripts..." /></div><div className="top-actions"><span className="date-readout">{dateLabel}</span><button type="button" className="icon-button notification-button" aria-label="Notifications">♧<i /></button><button type="button" className="language-button"><span className="globe">◎</span> EN <span>⌄</span></button><div className="top-profile"><div className="profile-avatar">AS</div><div><span>Good morning</span><strong>Adrian</strong></div><span className="chevron">⌄</span></div></div></header>
 
         <div className={`page-content ${activeNav !== 'Dashboard' ? 'page-content--inner-view' : ''}`}>
-          {activeNav !== 'Dashboard' && <WorkspacePanel activeNav={activeNav} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {activeNav === 'Identity Lab' && <IdentityLab user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {activeNav !== 'Dashboard' && activeNav !== 'Identity Lab' && <WorkspacePanel activeNav={activeNav} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
           <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> WELCOME BACK, GOOD MORNING <span className="sunmark">✦</span></div><h1>Your presence, <em>in focus.</em></h1><p>Design better conversations with a little more room to be human.</p></div><div className="status-summary"><span className="status-pulse" /> All systems operational <span className="status-divider" /> Phoenix v1.4</div></section>
 
           <section className="hero-room">
