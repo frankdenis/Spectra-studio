@@ -52,7 +52,7 @@ function SignalPill({ children, tone = 'green' }) {
   return <span className={`signal-pill signal-pill--${tone}`}><i />{children}</span>
 }
 
-function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify }) {
+function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify, sessions = [] }) {
   const panelData = {
     'Live rooms': { eyebrow: 'LIVE STUDIO', title: 'Rooms that stay in the moment.', copy: 'Open, monitor, and shape every active AI conversation from one place.' },
     People: { eyebrow: 'PEOPLE', title: 'Your conversation circle.', copy: 'Guests, collaborators, and recurring voices in one calm workspace.' },
@@ -74,7 +74,7 @@ function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify }) {
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [showAdmin, setShowAdmin] = useState(false)
+  const [showAdmin, setShowAdmin] = useState(false)\n  const [sessions, setSessions] = useState([])
 
   useEffect(() => {
     if (!supabase) { setSession(null); return }
@@ -98,12 +98,12 @@ export default function App() {
   const [voiceMode, setVoiceMode] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
   const [showToast, setShowToast] = useState(false)
-  const [presence, setPresence] = useState(96)
-  const [room, setRoom] = useState(() => createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' }))
+  const [presence, setPresence] = useState(null)
+  const [room, setRoom] = useState(null)
   const [health, setHealth] = useState(getConnectionHealth())
 
   useEffect(() => {
-    const sync = createRealtimeSync({ onEvent: (event) => { if (event.type === 'presence') setPresence(event.value) } })
+    const sync = createRealtimeSync({ roomId: room?.id, onEvent: (event) => { if (event.type === 'presence') setPresence(event.value) } })
     sync.connect()
     const healthTimer = setInterval(() => setHealth(getConnectionHealth()), 5000)
     return () => { sync.disconnect(); clearInterval(healthTimer) }
@@ -158,7 +158,7 @@ export default function App() {
 
         <div className={`page-content ${activeNav !== 'Dashboard' ? 'page-content--inner-view' : ''}`}>
           {activeNav === 'Identity Lab' && <IdentityLab user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
-          {activeNav !== 'Dashboard' && activeNav !== 'Identity Lab' && <WorkspacePanel activeNav={activeNav} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {activeNav !== 'Dashboard' && activeNav !== 'Identity Lab' && <WorkspacePanel activeNav={activeNav} sessions={sessions} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
           <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> WELCOME BACK, GOOD MORNING <span className="sunmark">✦</span></div><h1>Your presence, <em>in focus.</em></h1><p>Design better conversations with a little more room to be human.</p></div><div className="status-summary"><span className="status-pulse" /> All systems operational <span className="status-divider" /> Phoenix v1.4</div></section>
 
           <section className="hero-room">
@@ -166,7 +166,7 @@ export default function App() {
             <div className="hero-visual"><div className="visual-glow" /><div className="visual-grid" /><div className="visual-label visual-label--top"><span className="live-dot" /> LIVE ROOM / 001 <span>4K · 60 FPS</span></div><AvatarRenderer name="Aurora" mood={expression.toLowerCase()} /><div className="orbit orbit--one" /><div className="orbit orbit--two" /><div className="hero-status-card"><div className="hero-status-heading"><span>Presence quality</span><span>LIVE</span></div><div className="quality-row"><strong>{presence}%</strong><div className="quality-meter"><i style={{ width: `${presence}%` }} /></div></div><span>Listening with intention</span></div><div className="visual-label visual-label--bottom"><span className="wave-mini"><i /><i /><i /><i /><i /></span> Encrypted · Low latency</div></div>
           </section>
 
-          <section className="metrics-grid"><MetricCard label="Live rooms" value="03" detail="+2 this week" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={`${presence}.8%`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="99.97%" detail={`${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
+          <section className="metrics-grid"><MetricCard label="Live rooms" value="03" detail="+2 this week" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={presence == null ? '—' : `${presence} active`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="—" detail={health.latencyMs == null ? health.status : `${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
 
           <div className="dashboard-split"><VideoStream cameraEnabled={cameraEnabled} onCameraToggle={setCameraEnabled} expression={expression} onOpenRoom={openRoom} /><aside className="signal-side"><div className="signal-side-heading"><div><div className="section-kicker"><span className="section-index">02</span><span>Signal monitor</span></div><h3>Everything<br /><em>in sync.</em></h3></div><SignalPill>Live</SignalPill></div><div className="signal-summary"><div className="signal-summary-top"><span>CONNECTION QUALITY</span><strong>{health.status.toUpperCase()}</strong></div><div className="signal-waveform">{[30, 56, 43, 75, 48, 91, 57, 35, 65, 85, 47, 72, 37, 59, 81, 44, 63, 31, 55, 77].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div><div className="signal-time"><span>00:12:42</span><span>{health.latencyMs}ms latency</span></div></div><div className="conversation-card"><div className="conversation-top"><span>Latest exchange</span><button type="button" onClick={() => notify('Transcript is ready to review.')}>View transcript ↗</button></div><div className="quote-mark">“</div><p>We could make the first moment feel less like an introduction, and more like an <em>arrival.</em></p><div className="transcript-by"><span className="mini-avatar">AS</span><span>Adrian · just now</span><span className="confidence">98% clear</span></div></div><div className="signal-footer"><span><span className="secure-icon">✦</span> End-to-end encrypted</span><button type="button" onClick={() => setVoiceMode(!voiceMode)} className={`voice-toggle ${voiceMode ? 'is-on' : ''}`}><span>{voiceMode ? 'Voice mode' : 'Text mode'}</span><i /></button></div></aside></div>
 
