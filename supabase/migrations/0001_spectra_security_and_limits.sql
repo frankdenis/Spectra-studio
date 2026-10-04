@@ -118,3 +118,20 @@ create policy "audit_authenticated_insert" on public.audit_logs for insert to au
 create index if not exists rooms_owner_id_idx on public.rooms(owner_id);
 create index if not exists media_assets_owner_id_idx on public.media_assets(owner_id);
 create index if not exists audit_logs_actor_id_idx on public.audit_logs(actor_id);
+
+
+insert into storage.buckets (id, name, public)
+values ('identity-assets', 'identity-assets', false)
+on conflict (id) do nothing;
+
+create policy "identity_upload_own" on storage.objects
+for insert to authenticated
+with check (bucket_id = 'identity-assets' and (storage.foldername(name))[1] = (select auth.uid()::text));
+
+create policy "identity_read_own" on storage.objects
+for select to authenticated
+using (bucket_id = 'identity-assets' and ((storage.foldername(name))[1] = (select auth.uid()::text) or public.is_admin()));
+
+create policy "identity_delete_own" on storage.objects
+for delete to authenticated
+using (bucket_id = 'identity-assets' and ((storage.foldername(name))[1] = (select auth.uid()::text) or public.is_admin()));
