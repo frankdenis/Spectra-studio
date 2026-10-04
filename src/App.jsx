@@ -145,29 +145,6 @@ export default function App() {
 
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()), [])
 
-  const notify = (message = 'Your workspace is up to date.') => {
-    setShowToast(message)
-    window.setTimeout(() => setShowToast(false), 3200)
-  }
-
-  const launchRoom = () => {
-    const nextRoom = createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' })
-    setRoom(nextRoom)
-    setIsLive(true)
-    notify('Your live room is ready.')
-  }
-
-  const openRoom = () => {
-    setActiveNav('Dashboard')
-    setIsLive(true)
-    window.setTimeout(() => document.querySelector('.stream-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
-  }
-
-  const navClick = (label) => {
-    setActiveNav(label)
-    if (label !== 'Dashboard') notify(`${label} is connected to your workspace.`)
-  }
-
   return (
     <div className="app-shell">
       <aside className="sidebar">
