@@ -13,7 +13,9 @@
     "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "@supabase/supabase-js": "latest"
+    "@supabase/supabase-js": "latest",
+    "livekit-client": "latest",
+    "lucide-react": "latest"
   },
   "devDependencies": {}
 }
