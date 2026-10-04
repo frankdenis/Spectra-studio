@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const bucket = 'identity-assets'
+const bucket = 'media-assets'
 
 export default function IdentityLab({ user, onBack, onNotify }) {
   const [file, setFile] = useState(null)

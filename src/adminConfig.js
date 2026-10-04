@@ -1,4 +1,3 @@
-// Admin access is controlled by VITE_ADMIN_EMAILS in the deployment environment.
-export const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean)
-
-export const isAdminUser = (user) => Boolean(user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()))
+// Admin authorization is enforced by the Supabase profiles.role value and RLS.
+// The browser only uses this helper as a UI hint; server/database policies remain authoritative.
+export const isAdminUser = (user, profile) => Boolean(profile?.role === 'admin' || user?.app_metadata?.role === 'admin')

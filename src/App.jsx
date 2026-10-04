@@ -79,6 +79,7 @@ function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify, sessi
 
 export default function App() {
   const [session, setSession] = useState(undefined)
+  const [profile, setProfile] = useState(null)
   const [authMode, setAuthMode] = useState('signin')
   const [showAdmin, setShowAdmin] = useState(false)
   const [sessions, setSessions] = useState([])
@@ -106,7 +107,8 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!supabase || !session) return
+    if (!supabase || !session?.user?.id) return
+    supabase.from('profiles').select('id,full_name,role,status').eq('id', session.user.id).maybeSingle().then(({ data }) => setProfile(data || null))
     supabase.from('rooms').select('id,title,status,created_at').order('created_at', { ascending: false }).limit(10).then(({ data }) => {
       if (data) setSessions(data.map(row => ({ name: row.title, guest: 'Private room', time: new Date(row.created_at).toLocaleString(), type: 'Private', color: 'violet', state: row.status })))
     })
@@ -124,6 +126,8 @@ export default function App() {
     () => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()),
     []
   )
+
+  const admin = isAdminUser(session?.user, profile)
 
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut()
@@ -160,7 +164,7 @@ export default function App() {
     setAuthMode('signin')
     setSession(nextSession)
   }} />
-  if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
+  if (showAdmin && admin) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
 
   return (
     <div className="app-shell">
@@ -183,12 +187,12 @@ export default function App() {
         <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row account-row--menu">
           <button type="button" className="account-identity" onClick={() => setShowAccountMenu(v => !v)} aria-expanded={showAccountMenu}>
             <div className="profile-avatar">AS</div>
-            <div><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong><span>{isAdminUser(session.user) ? 'Administrator' : 'Workspace member'}</span></div>
+            <div><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong><span>{admin ? 'Administrator' : 'Workspace member'}</span></div>
           </button>
           <button type="button" className="account-menu-trigger" aria-label="Account menu" onClick={() => setShowAccountMenu(v => !v)}>•••</button>
           {showAccountMenu && <div className="account-menu">
             <div className="account-menu-email">{session.user.email}</div>
-            {isAdminUser(session.user) && <button type="button" onClick={() => { setShowAccountMenu(false); setShowAdmin(true) }}>⚙ Admin Dashboard</button>}
+            {admin && <button type="button" onClick={() => { setShowAccountMenu(false); setShowAdmin(true) }}>⚙ Admin Dashboard</button>}
             <button type="button" onClick={() => { setShowAccountMenu(false); signOut() }}>↪ Sign out</button>
           </div>}
         </div></div>
@@ -208,10 +212,10 @@ export default function App() {
 
           <section className="hero-room">
             <div className="hero-copy"><div className="hero-copy-kicker"><span className="sparkle-icon">✦</span> A NEW KIND OF VIDEO ROOM</div><h2>Make every<br />conversation feel <span>closer.</span></h2><p>Meet Aurora, your realtime AI presence designed to listen, reflect, and move the conversation forward.</p><div className="hero-actions"><button type="button" className="primary-button" onClick={launchRoom}>{isLive ? 'Open live room' : 'Launch live room'} <span>↗</span></button><button type="button" className="ghost-button" onClick={() => setShowInvite(true)}>Invite a guest <span>＋</span></button></div><div className="hero-meta"><span><i className="meta-icon">◉</i> Phoenix engine</span><span><i className="meta-icon">⌁</i> Multimodal</span><span><i className="meta-icon">◌</i> Private by default</span></div></div>
-            <div className="hero-visual"><div className="visual-glow" /><div className="visual-grid" /><div className="visual-label visual-label--top"><span className="live-dot" /> LIVE ROOM / 001 <span>4K · 60 FPS</span></div><AvatarRenderer name="Aurora" mood={expression.toLowerCase()} /><div className="orbit orbit--one" /><div className="orbit orbit--two" /><div className="hero-status-card"><div className="hero-status-heading"><span>Presence quality</span><span>LIVE</span></div><div className="quality-row"><strong>{presence}%</strong><div className="quality-meter"><i style={{ width: `${presence}%` }} /></div></div><span>Listening with intention</span></div><div className="visual-label visual-label--bottom"><span className="wave-mini"><i /><i /><i /><i /><i /></span> Encrypted · Low latency</div></div>
+            <div className="hero-visual"><div className="visual-glow" /><div className="visual-grid" /><div className="visual-label visual-label--top"><span className="live-dot" /> LIVE ROOM / 001 <span>4K · 60 FPS</span></div><AvatarRenderer name="Aurora" mood={expression.toLowerCase()} /><div className="orbit orbit--one" /><div className="orbit orbit--two" /><div className="hero-status-card"><div className="hero-status-heading"><span>Presence quality</span><span>LIVE</span></div><div className="quality-row"><strong>{presence == null ? '—' : `${presence}%`}</strong><div className="quality-meter"><i style={{ width: `${presence}%` }} /></div></div><span>Listening with intention</span></div><div className="visual-label visual-label--bottom"><span className="wave-mini"><i /><i /><i /><i /><i /></span> Encrypted · Low latency</div></div>
           </section>
 
-          <section className="metrics-grid"><MetricCard label="Live rooms" value="03" detail="+2 this week" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={presence == null ? '—' : `${presence} active`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="—" detail={health.latencyMs == null ? health.status : `${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
+          <section className="metrics-grid"><MetricCard label="Live rooms" value={String(sessions.length).padStart(2, "0")} detail="From your workspace" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={presence == null ? '—' : `${presence} active`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="—" detail={health.latencyMs == null ? health.status : `${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
 
           <div className="dashboard-split"><VideoStream cameraEnabled={cameraEnabled} onCameraToggle={setCameraEnabled} expression={expression} onOpenRoom={openRoom} /><aside className="signal-side"><div className="signal-side-heading"><div><div className="section-kicker"><span className="section-index">02</span><span>Signal monitor</span></div><h3>Everything<br /><em>in sync.</em></h3></div><SignalPill>Live</SignalPill></div><div className="signal-summary"><div className="signal-summary-top"><span>CONNECTION QUALITY</span><strong>{health.status.toUpperCase()}</strong></div><div className="signal-waveform">{[30, 56, 43, 75, 48, 91, 57, 35, 65, 85, 47, 72, 37, 59, 81, 44, 63, 31, 55, 77].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div><div className="signal-time"><span>00:12:42</span><span>{health.latencyMs}ms latency</span></div></div><div className="conversation-card"><div className="conversation-top"><span>Latest exchange</span><button type="button" onClick={() => notify('Transcript is ready to review.')}>View transcript ↗</button></div><div className="quote-mark">“</div><p>We could make the first moment feel less like an introduction, and more like an <em>arrival.</em></p><div className="transcript-by"><span className="mini-avatar">AS</span><span>Adrian · just now</span><span className="confidence">98% clear</span></div></div><div className="signal-footer"><span><span className="secure-icon">✦</span> End-to-end encrypted</span><button type="button" onClick={() => setVoiceMode(!voiceMode)} className={`voice-toggle ${voiceMode ? 'is-on' : ''}`}><span>{voiceMode ? 'Voice mode' : 'Text mode'}</span><i /></button></div></aside></div>
 

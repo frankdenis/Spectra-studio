@@ -64,12 +64,14 @@ export default function StudioModule({ type, user, onBack, onNotify }) {
         if(error)throw error
         setItems(x=>[data,...x])
         try{
-          const {data:fn,error:fnError}=await supabase.functions.invoke('generate-media',{body:{generationId:data.id,type,inputs:values}})
-          if(fnError)throw fnError
+          const { data: { session } } = await supabase.auth.getSession()
+          const response = await fetch('/api/generate-media', { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${session?.access_token || ''}`}, body:JSON.stringify({generationId:data.id,type,inputs:values}) })
+          const fn = await response.json().catch(()=>({}))
+          if(!response.ok) throw new Error(fn.error || 'Media provider request failed.')
           if(fn?.url)setPreview(fn.url)
           onNotify?.('Generation submitted to the configured provider.')
         }catch(providerError){
-          await supabase.from('generations').update({status:'blocked',error_message:'No production generation provider is configured.'}).eq('id',data.id)
+          await supabase.from('generations').update({status:'failed',error_message:'No production generation provider is configured.'}).eq('id',data.id)
           onNotify?.('Generation record created, but no production media provider is configured yet. No fake output was created.')
         }
       } else {

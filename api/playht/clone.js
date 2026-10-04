@@ -12,7 +12,7 @@ export default async function handler(req,res){
   const body=typeof req.body==='string'?JSON.parse(req.body||'{}'):req.body||{}
   if(body.consentConfirmed!==true) return res.status(400).json({error:'Explicit voice-owner consent is required.'})
   if(!body.sampleFileUrl||!/^https:\\/\\//i.test(body.sampleFileUrl)) return res.status(400).json({error:'A secure sample file URL is required.'})
-  const voiceName=String(body.voiceName||'My Spectra Voice').trim().slice(0,80)
+  const limits=await supabase.from('user_limits').select('unlimited,monthly_voice_minutes').eq('user_id',user.id).maybeSingle(); if(limits.error||!limits.data)return res.status(403).json({error:'Usage limits are not configured for this account.'}); if(!limits.data.unlimited&&Number(limits.data.monthly_voice_minutes||0)<=0)return res.status(402).json({error:'Your voice allowance is exhausted.'}); const voiceName=String(body.voiceName||'My Spectra Voice').trim().slice(0,80)
   const url=new URL('https://api.play.ht/api/v2/cloned-voices/instant/')
   url.searchParams.set('sample_file_url',body.sampleFileUrl)
   url.searchParams.set('voice_name',voiceName)
