@@ -146,3 +146,16 @@ button { min-height: 36px; }
 .module-preview pre{white-space:pre-wrap;color:#c9ccda;padding-top:20px}
 @media(max-width:900px){.module-editor{grid-template-columns:1fr}.module-editor-side{min-height:180px}.module-list-row{grid-template-columns:90px minmax(0,1fr) 70px 30px}.module-list-row time{display:none}}
 @media(max-width:600px){.studio-module-view{padding:8px 0 36px}.module-editor-main,.module-editor-side,.module-list{padding:17px;border-radius:18px}.module-list-row{grid-template-columns:1fr 28px}.module-list-row span,.module-list-row small{display:none}.module-preview{inset:3%;border-radius:18px}}
+
+.platform-center{max-width:1180px;margin:0 auto;padding:18px 0 56px}
+.platform-search{width:100%;box-sizing:border-box;margin:18px 0;padding:16px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);color:#fff;outline:none}
+.platform-list{display:grid;gap:10px;margin-top:18px}
+.platform-row{display:grid;grid-template-columns:130px minmax(0,1fr) 180px 190px;gap:15px;align-items:center;padding:16px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);border-radius:16px}
+.platform-row span,.platform-row small,.platform-row time{color:#8e91a4;font-size:11px}
+.platform-row strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.billing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:20px}
+.billing-card{display:grid;gap:12px;padding:22px;border-radius:22px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}
+.billing-card span{color:#9b9eb0;font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+.billing-card strong{font-size:28px;color:#fff}
+.billing-card small{color:#898c9f;line-height:1.5;min-height:42px}
+@media(max-width:800px){.billing-grid{grid-template-columns:1fr}.platform-row{grid-template-columns:1fr 28px}.platform-row span,.platform-row small,.platform-row time{display:none}}
