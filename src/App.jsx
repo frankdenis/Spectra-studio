@@ -6,16 +6,18 @@ import { createRealtimeSync } from './services/RealtimeSync'
 import AuthScreen from './components/AuthScreen'
 import AdminDashboard from './components/AdminDashboard'
 import IdentityLab from './components/IdentityLab'
+import StudioHub from './components/StudioHub'
+import AccountCenter from './components/AccountCenter'
 import { supabase } from './lib/supabase'
 import { isAdminUser } from './adminConfig'
 
 const navItems = [
   { label: 'Dashboard', icon: '⌂' },
-  { label: 'Live rooms', icon: '◉', count: 2 },
-  { label: 'People', icon: '◎' },
-  { label: 'Insights', icon: '⌁' },
-  { label: 'Recordings', icon: '▣' },
+  { label: 'Create', icon: '✦' },
+  { label: 'Communicate', icon: '◉' },
+  { label: 'Library', icon: '▣' },
   { label: 'Identity Lab', icon: '◈' },
+  { label: 'Live rooms', icon: '◎' },
 ]
 
 const sessions = [
@@ -170,8 +172,8 @@ export default function App() {
         <nav className="primary-nav" aria-label="Tools navigation">
           <span className="nav-label">Studio</span>
           <button type="button" className="nav-item" onClick={() => setShowInvite(true)}><Icon>＋</Icon><span>Invite someone</span></button>
-          <button type="button" className="nav-item" onClick={() => notify('Library sync is complete.')}><Icon>⌑</Icon><span>Shared library</span></button>
-          <button type="button" className="nav-item" onClick={() => notify('Settings are ready to configure.')}><Icon>⚙</Icon><span>Settings</span></button>
+          <button type="button" className="nav-item" onClick={() => setActiveNav('Profile')}><Icon>◎</Icon><span>Profile</span></button>
+          <button type="button" className="nav-item" onClick={() => setActiveNav('Settings')}><Icon>⚙</Icon><span>Settings</span></button>
         </nav>
         <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row account-row--menu">
           <button type="button" className="account-identity" onClick={() => setShowAccountMenu(v => !v)} aria-expanded={showAccountMenu}>
@@ -192,7 +194,9 @@ export default function App() {
 
         <div className={`page-content ${activeNav !== 'Dashboard' ? 'page-content--inner-view' : ''}`}>
           {activeNav === 'Identity Lab' && <IdentityLab user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
-          {activeNav !== 'Dashboard' && activeNav !== 'Identity Lab' && <WorkspacePanel activeNav={activeNav} sessions={sessions} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Create','Communicate','Library'].includes(activeNav) && <StudioHub section={activeNav} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Profile','Settings'].includes(activeNav) && <AccountCenter mode={activeNav} user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Live rooms','People','Insights','Recordings'].includes(activeNav) && <WorkspacePanel activeNav={activeNav} sessions={sessions} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
           <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> WELCOME BACK, GOOD MORNING <span className="sunmark">✦</span></div><h1>Your presence, <em>in focus.</em></h1><p>Design better conversations with a little more room to be human.</p></div><div className="status-summary"><span className="status-pulse" /> All systems operational <span className="status-divider" /> Phoenix v1.4</div></section>
 
           <section className="hero-room">
