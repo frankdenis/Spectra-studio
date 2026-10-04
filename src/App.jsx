@@ -79,6 +79,7 @@ function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify, sessi
 
 export default function App() {
   const [session, setSession] = useState(undefined)
+  const [profile, setProfile] = useState(null)
   const [authMode, setAuthMode] = useState('signin')
   const [showAdmin, setShowAdmin] = useState(false)
   const [sessions, setSessions] = useState([])
@@ -106,7 +107,8 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!supabase || !session) return
+    if (!supabase || !session?.user?.id) return
+    supabase.from('profiles').select('id,full_name,role,status').eq('id', session.user.id).maybeSingle().then(({ data }) => setProfile(data || null))
     supabase.from('rooms').select('id,title,status,created_at').order('created_at', { ascending: false }).limit(10).then(({ data }) => {
       if (data) setSessions(data.map(row => ({ name: row.title, guest: 'Private room', time: new Date(row.created_at).toLocaleString(), type: 'Private', color: 'violet', state: row.status })))
     })
@@ -124,6 +126,8 @@ export default function App() {
     () => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()),
     []
   )
+
+  const admin = isAdminUser(session?.user, profile)
 
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut()
@@ -160,7 +164,7 @@ export default function App() {
     setAuthMode('signin')
     setSession(nextSession)
   }} />
-  if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
+  if (showAdmin && admin) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
 
   return (
     <div className="app-shell">
@@ -183,12 +187,12 @@ export default function App() {
         <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row account-row--menu">
           <button type="button" className="account-identity" onClick={() => setShowAccountMenu(v => !v)} aria-expanded={showAccountMenu}>
             <div className="profile-avatar">AS</div>
-            <div><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong><span>{isAdminUser(session.user) ? 'Administrator' : 'Workspace member'}</span></div>
+            <div><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong><span>{admin ? 'Administrator' : 'Workspace member'}</span></div>
           </button>
           <button type="button" className="account-menu-trigger" aria-label="Account menu" onClick={() => setShowAccountMenu(v => !v)}>•••</button>
           {showAccountMenu && <div className="account-menu">
             <div className="account-menu-email">{session.user.email}</div>
-            {isAdminUser(session.user) && <button type="button" onClick={() => { setShowAccountMenu(false); setShowAdmin(true) }}>⚙ Admin Dashboard</button>}
+            {admin && <button type="button" onClick={() => { setShowAccountMenu(false); setShowAdmin(true) }}>⚙ Admin Dashboard</button>}
             <button type="button" onClick={() => { setShowAccountMenu(false); signOut() }}>↪ Sign out</button>
           </div>}
         </div></div>
