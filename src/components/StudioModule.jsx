@@ -6,6 +6,10 @@ const config = {
   video: { title:'Video Studio', eyebrow:'VIDEO', description:'Prepare AI video generations with scenes, motion, camera and audio direction.', fields:['Prompt','Duration','Aspect ratio'] },
   image_to_video: { title:'Image → Video', eyebrow:'MOTION', description:'Turn a still image into a directed video sequence.', fields:['Source image URL','Motion prompt','Duration'] },
   avatar: { title:'AI Avatar', eyebrow:'AVATAR', description:'Create and manage photorealistic AI identities from authorized source media.', fields:['Identity name','Reference image URL','Voice model'] },
+  character: { title:'AI Characters', eyebrow:'CHARACTERS', description:'Create reusable AI characters with identity, personality, voice and visual direction.', fields:['Character name','Personality','Voice model','Avatar identity'] },
+  avatar_library: { title:'My Avatars', eyebrow:'IDENTITIES', description:'Manage your authorized AI identities.', fields:[] },
+  voice_library: { title:'My Voices', eyebrow:'VOICES', description:'Manage stock and custom voice models.', fields:[] },
+  character_library: { title:'Characters', eyebrow:'CHARACTERS', description:'Manage reusable AI characters.', fields:[] },
   audio: { title:'Audio Call', eyebrow:'AUDIO CALL', description:'Start a private realtime audio session with recording and transcription support.', fields:['Room name','Participant limit'] },
   video_call: { title:'Video Call', eyebrow:'VIDEO CALL', description:'Start a realtime video room with camera, microphone and screen sharing.', fields:['Room name','Participant limit'] },
   ai_call: { title:'AI Call', eyebrow:'AI CALL', description:'Open a realtime conversation with an AI identity and selected voice.', fields:['Room name','AI identity','Voice'] },
@@ -34,8 +38,9 @@ export default function StudioModule({ type, user, onBack, onNotify }) {
     } else if(['audio','video_call','ai_call'].includes(type)){
       const {data,error}=await supabase.from('call_sessions').select('*').order('created_at',{ascending:false}).limit(30)
       if(error) onNotify?.(error.message); else setItems(data||[])
-    } else if(type==='avatar'){
-      const {data,error}=await supabase.from('ai_identities').select('*').order('updated_at',{ascending:false}).limit(30)
+    } else if(type==='avatar'||type==='character'||type==='avatar_library'||type==='character_library'||type==='voice_library'){
+      const table=type==='voice_library'?'voice_models':type.includes('character')?'ai_identities':'ai_identities'
+      const {data,error}=await supabase.from(table).select('*').order('updated_at',{ascending:false}).limit(30)
       if(error) onNotify?.(error.message); else setItems(data||[])
     }
   }
@@ -49,8 +54,8 @@ export default function StudioModule({ type, user, onBack, onNotify }) {
         const {data,error}=await supabase.from('call_sessions').insert({owner_id:user.id,name:values['Room name']||c.title,kind:type==='audio'?'audio':type==='video_call'?'video':'ai',status:'draft',metadata:values}).select().single()
         if(error)throw error
         setItems(x=>[data,...x]); onNotify?.('Call session created. Realtime provider can now join this session.')
-      } else if(type==='avatar'){
-        const {data,error}=await supabase.from('ai_identities').insert({owner_id:user.id,name:values['Identity name']||'New identity',status:'draft',metadata:values}).select().single()
+      } else if(type==='avatar'||type==='character'){
+        const {data,error}=await supabase.from('ai_identities').insert({owner_id:user.id,name:values['Identity name']||values['Character name']||'New identity',status:'draft',metadata:{...values,kind:type}}).select().single()
         if(error)throw error
         setItems(x=>[data,...x]); onNotify?.('AI identity created. Add authorized media and connect the avatar provider.')
       } else if(['image','video','image_to_video'].includes(type)){
