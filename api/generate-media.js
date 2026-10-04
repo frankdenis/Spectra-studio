@@ -65,13 +65,13 @@ export default async function handler(req, res) {
 
     const bytes = Buffer.from(image.b64_json, 'base64')
     const path = `${user.id}/generated/${generationId}.png`
-    const upload = await admin.storage.from('identity-assets').upload(path, bytes, { contentType: 'image/png', upsert: true })
+    const upload = await admin.storage.from('media-assets').upload(path, bytes, { contentType: 'image/png', upsert: true })
     if (upload.error) {
       await admin.from('generations').update({ status: 'failed', error_message: upload.error.message }).eq('id', generationId)
       return json(res, 500, { error: 'Generated image could not be stored.' })
     }
 
-    const { data: signed } = await admin.storage.from('identity-assets').createSignedUrl(path, 86400)
+    const { data: signed } = await admin.storage.from('media-assets').createSignedUrl(path, 86400)
     const asset = await admin.from('media_assets').insert({
       owner_id: user.id,
       kind: 'avatar_output',
