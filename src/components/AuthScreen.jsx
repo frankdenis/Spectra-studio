@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
+const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || 'https://spectra-studio-frankdennis67.vercel.app'
+
 export default function AuthScreen({ onAuthenticated, initialMode = 'signin' }) {
   const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
@@ -26,7 +28,7 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'signin' }) 
     try {
       if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin,
+          redirectTo: AUTH_REDIRECT_URL,
         })
         if (error) throw error
         showMessage('Password reset email sent. Check your inbox and follow the secure link.')
@@ -52,7 +54,7 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'signin' }) 
             password,
             options: {
               data: { full_name: name },
-              emailRedirectTo: window.location.origin,
+              emailRedirectTo: AUTH_REDIRECT_URL,
             },
           })
 
@@ -64,7 +66,12 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'signin' }) 
         onAuthenticated(result.data.session)
       }
     } catch (error) {
-      showMessage(error.message || 'Authentication failed.')
+      const errorMessage = error.message || 'Authentication failed.'
+      if (mode === 'signin' && /email not confirmed/i.test(errorMessage)) {
+        showMessage('Your email is not confirmed yet. Check your inbox, or resend the confirmation email below.')
+      } else {
+        showMessage(errorMessage)
+      }
     } finally {
       setBusy(false)
     }
@@ -76,7 +83,7 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'signin' }) 
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: AUTH_REDIRECT_URL },
       })
       if (error) throw error
     } catch (error) {
@@ -136,6 +143,18 @@ export default function AuthScreen({ onAuthenticated, initialMode = 'signin' }) 
       </form>
 
       {mode === 'signin' && <button className="auth-link" type="button" onClick={()=>switchMode('forgot')}>Forgot your password?</button>}
+      {mode === 'signin' && message.toLowerCase().includes('not confirmed') && <button className="auth-link" type="button" disabled={busy} onClick={async ()=>{
+        setBusy(true)
+        try {
+          const { error } = await supabase.auth.resend({ type: 'signup', email })
+          if (error) throw error
+          showMessage('A fresh confirmation email has been sent. Open it from the live Spectra Studio link.')
+        } catch (error) {
+          showMessage(error.message || 'Could not resend the confirmation email.')
+        } finally {
+          setBusy(false)
+        }
+      }}>Resend confirmation email</button>}
 
       {mode === 'forgot' && <button className="auth-switch" type="button" onClick={()=>switchMode('signin')}>← Back to sign in</button>}
 
