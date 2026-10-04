@@ -1,7 +1,7 @@
 {
-  "name": "Spectra Studio — Realtime AI Video Workspace",
+  "name": "Spectra Studio — AI Media & Realtime Communication",
   "short_name": "Spectra Studio",
-  "description": "Realtime AI video rooms with AI presence, collaboration, recordings, and multimodal interaction.",
+  "description": "AI media creation, voice, avatars, realtime calls, recordings, and multimodal collaboration.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
