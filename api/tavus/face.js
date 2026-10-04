@@ -16,12 +16,12 @@ export default async function handler(req, res) {
   if (!authResponse.ok) return res.status(401).json({ error: 'Invalid session.' })
   const user = await authResponse.json()
 
-  const limitsResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_limits?select=unlimited,monthly_avatar_minutes&user_id=eq.${encodeURIComponent(user.id)}`, {
+  const adminEmails = (process.env.SPECTRA_ADMIN_EMAILS || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean)\n  const isAdmin = adminEmails.includes(String(user.email || '').toLowerCase())\n\n  const limitsResponse = await fetch(`${process.env.SUPABASE_URL}/rest/v1/user_limits?select=unlimited,monthly_avatar_minutes&user_id=eq.${encodeURIComponent(user.id)}`, {
     headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}` },
   })
   const limits = await limitsResponse.json()
-  if (!limitsResponse.ok || !limits[0]) return res.status(403).json({ error: 'Usage limits are not configured for this account.' })
-  if (!limits[0].unlimited && Number(limits[0].monthly_avatar_minutes || 0) <= 0) return res.status(402).json({ error: 'Your avatar allowance is exhausted.' })
+  if (!isAdmin && (!limitsResponse.ok || !limits[0])) return res.status(403).json({ error: 'Usage limits are not configured for this account.' })
+  if (!isAdmin && !limits[0].unlimited && Number(limits[0].monthly_avatar_minutes || 0) <= 0) return res.status(402).json({ error: 'Your avatar allowance is exhausted.' })
 
   const body = { face_name: String(name || 'Spectra Identity').slice(0, 80), model_name: 'phoenix-4.5' }
   if (sourceType === 'video') body.train_video_url = sourceUrl
