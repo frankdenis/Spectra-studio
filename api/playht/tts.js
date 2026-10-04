@@ -20,5 +20,7 @@ export default async function handler(req,res){
   res.setHeader('Content-Type',upstream.headers.get('content-type')||'audio/mpeg')
   res.setHeader('Cache-Control','no-store')
   const buffer=Buffer.from(await upstream.arrayBuffer())
+  const estimatedMinutes=Math.max(1,Math.ceil(body.text.length/900))
+  await supabase.rpc('consume_usage',{p_user_id:user.id,p_kind:'voice',p_units:estimatedMinutes,p_event_key:`tts:${user.id}:${crypto.randomUUID()}`,p_metadata:{provider:'playht',characters:body.text.length}})
   return res.end(buffer)
 }
