@@ -74,6 +74,7 @@ function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify, sessi
 
 export default function App() {
   const [session, setSession] = useState(undefined)
+  const [authMode, setAuthMode] = useState('signin')
   const [showAdmin, setShowAdmin] = useState(false)
   const [sessions, setSessions] = useState([])
   const [activeNav, setActiveNav] = useState('Dashboard')
@@ -90,7 +91,11 @@ export default function App() {
   useEffect(() => {
     if (!supabase) { setSession(null); return }
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession))
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') setAuthMode('reset')
+      if (event === 'SIGNED_IN' && authMode !== 'reset') setAuthMode('signin')
+      setSession(nextSession)
+    })
     return () => listener.subscription.unsubscribe()
   }, [])
 
@@ -140,7 +145,10 @@ export default function App() {
   }
 
   if (session === undefined) return <main className="auth-screen"><div className="auth-card"><span className="auth-kicker">SPECTRA STUDIO</span><h1>Securing your workspace…</h1></div></main>
-  if (!session) return <AuthScreen onAuthenticated={(nextSession) => setSession(nextSession)} />
+  if (!session || authMode === 'reset') return <AuthScreen initialMode={authMode} onAuthenticated={(nextSession) => {
+    setAuthMode('signin')
+    setSession(nextSession)
+  }} />
   if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
 
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()), [])
