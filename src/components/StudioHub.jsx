@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import VoiceStudio from './VoiceStudio'
 
 const sections = {
   'Create': [
@@ -22,7 +23,7 @@ const sections = {
   ],
 }
 
-export default function StudioHub({ section = 'Create', onBack, onNotify }) {
+export default function StudioHub({ section = 'Create', user, onBack, onNotify }) {
   const [active, setActive] = useState(null)
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -64,6 +65,8 @@ export default function StudioHub({ section = 'Create', onBack, onNotify }) {
     } catch(e) { onNotify?.(e.message || 'Could not create project.') }
     finally { setBusy(false) }
   }
+
+  if(active && (active[1]==='voice'||active[1]==='voice_clone')) return <VoiceStudio mode={active[1]==='voice_clone'?'clone':'tts'} user={user} onBack={()=>setActive(null)} onNotify={onNotify} />
 
   const title = section === 'Create' ? 'Create anything with Spectra.' : section === 'Communicate' ? 'Talk, meet and create together.' : 'Everything you create, organized.'
 
