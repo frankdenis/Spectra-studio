@@ -40,7 +40,8 @@ export default function StudioModule({ type, user, onBack, onNotify }) {
       if(error) onNotify?.(error.message); else setItems(data||[])
     } else if(type==='avatar'||type==='character'||type==='avatar_library'||type==='character_library'||type==='voice_library'){
       const table=type==='voice_library'?'voice_models':type.includes('character')?'ai_identities':'ai_identities'
-      const {data,error}=await supabase.from(table).select('*').order('updated_at',{ascending:false}).limit(30)
+      const orderColumn=table==='voice_models'?'created_at':'updated_at'
+      const {data,error}=await supabase.from(table).select('*').order(orderColumn,{ascending:false}).limit(30)
       if(error) onNotify?.(error.message); else setItems(data||[])
     }
   }
