@@ -96,7 +96,7 @@ export default async function handler(req, res) {
   const providerUrl = process.env.SPECTRA_MEDIA_VIDEO_URL
   const providerKey = process.env.SPECTRA_MEDIA_VIDEO_KEY
   if (!providerUrl || !providerKey) {
-    await admin.from('generations').update({ status: 'blocked', error_message: 'Video provider is not configured on the server.' }).eq('id', generationId)
+    await admin.from('generations').update({ status: 'failed', error_message: 'Video provider is not configured on the server.' }).eq('id', generationId)
     return json(res, 503, { error: 'Video provider is not configured yet.' })
   }
 
