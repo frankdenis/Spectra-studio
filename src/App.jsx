@@ -114,6 +114,11 @@ export default function App() {
     return () => { sync.disconnect() }
   }, [room?.id])
 
+  const dateLabel = useMemo(
+    () => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()),
+    []
+  )
+
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut()
     setShowAdmin(false)
@@ -150,8 +155,6 @@ export default function App() {
     setSession(nextSession)
   }} />
   if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
-
-  const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()), [])
 
   return (
     <div className="app-shell">
