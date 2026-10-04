@@ -83,6 +83,7 @@ export default function App() {
   const [expression, setExpression] = useState('Focused')
   const [voiceMode, setVoiceMode] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
+  const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [presence, setPresence] = useState(null)
   const [room, setRoom] = useState(null)
@@ -172,11 +173,22 @@ export default function App() {
           <button type="button" className="nav-item" onClick={() => notify('Library sync is complete.')}><Icon>⌑</Icon><span>Shared library</span></button>
           <button type="button" className="nav-item" onClick={() => notify('Settings are ready to configure.')}><Icon>⚙</Icon><span>Settings</span></button>
         </nav>
-        <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row"><div className="profile-avatar">AS</div><div><strong>Adrian Stone</strong><span>Workspace owner</span></div><button type="button" aria-label="Account menu" onClick={() => isAdminUser(session.user) ? setShowAdmin(true) : notify("Account controls are available in Settings.")}>•••</button></div></div>
+        <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row account-row--menu">
+          <button type="button" className="account-identity" onClick={() => setShowAccountMenu(v => !v)} aria-expanded={showAccountMenu}>
+            <div className="profile-avatar">AS</div>
+            <div><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong><span>{isAdminUser(session.user) ? 'Administrator' : 'Workspace member'}</span></div>
+          </button>
+          <button type="button" className="account-menu-trigger" aria-label="Account menu" onClick={() => setShowAccountMenu(v => !v)}>•••</button>
+          {showAccountMenu && <div className="account-menu">
+            <div className="account-menu-email">{session.user.email}</div>
+            {isAdminUser(session.user) && <button type="button" onClick={() => { setShowAccountMenu(false); setShowAdmin(true) }}>⚙ Admin Dashboard</button>}
+            <button type="button" onClick={() => { setShowAccountMenu(false); signOut() }}>↪ Sign out</button>
+          </div>}
+        </div></div>
       </aside>
 
       <main className="main-canvas">
-        <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><i /><i /><i /></span></div><div className="search-box"><span>⌕</span><input aria-label="Search" placeholder="Search rooms, guests, or transcripts..." /></div><div className="top-actions"><span className="date-readout">{dateLabel}</span><button type="button" className="icon-button notification-button" aria-label="Notifications">♧<i /></button><button type="button" className="language-button"><span className="globe">◎</span> EN <span>⌄</span></button><div className="top-profile"><div className="profile-avatar">AS</div><div><span>Good morning</span><strong>Adrian</strong></div><span className="chevron">⌄</span></div></div></header>
+        <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><i /><i /><i /></span></div><div className="search-box"><span>⌕</span><input aria-label="Search" placeholder="Search rooms, guests, or transcripts..." /></div><div className="top-actions"><span className="date-readout">{dateLabel}</span><button type="button" className="icon-button notification-button" aria-label="Notifications">♧<i /></button><button type="button" className="language-button"><span className="globe">◎</span> EN <span>⌄</span></button><div className="top-profile top-profile--clickable" role="button" tabIndex="0" onClick={() => setShowAccountMenu(v => !v)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setShowAccountMenu(v => !v) }}><div className="profile-avatar">AS</div><div><span>Good morning</span><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong></div><span className="chevron">⌄</span></div></div></header>
 
         <div className={`page-content ${activeNav !== 'Dashboard' ? 'page-content--inner-view' : ''}`}>
           {activeNav === 'Identity Lab' && <IdentityLab user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
