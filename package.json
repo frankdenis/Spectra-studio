@@ -1,6 +1,6 @@
 {
-  "name": "realtime-ai-video-call",
-  "version": "1.0.0",
+  "name": "spectra-studio",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
