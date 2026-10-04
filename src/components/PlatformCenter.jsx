@@ -39,6 +39,7 @@ export default function PlatformCenter({mode='Notifications',user,onBack,onNotif
    window.location.assign(data.authorization_url)
   }catch(error){onNotify?.(error.message||'Unable to start payment.');setCheckout(null)}
  }
+ const filtered=mode==='Search'?items.filter(x=>(String(x.name||'')+' '+String(x.prompt||'')+' '+String(x.kind||'')).toLowerCase().includes(query.toLowerCase())):items
  return <section className="platform-center">
   <div className="workspace-panel-head"><div><div className="eyebrow"><span className="eyebrow-line"/> {mode.toUpperCase()}</div><h1>{mode==='Search'?'Find anything in Spectra.':mode==='Notifications'?'Stay in the loop.':mode==='Billing'?'Your plan and usage.':'Security and account activity.'}</h1><p>{mode==='Search'?'Search projects, generations and media in your workspace.':mode==='Notifications'?'System, generation and account notifications.':mode==='Billing'?'Subscription and account billing status.':'Recent security and audit events.'}</p></div><button className="ghost-button" onClick={onBack}>← Back</button></div>
   {mode==='Search'&&<input className="platform-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search projects, generations, media…" autoFocus/>}
