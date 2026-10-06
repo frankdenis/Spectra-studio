@@ -1,12 +1,15 @@
 import React, { useRef, useState } from 'react'
 
-export default function FaceCamera({ enabled = false, onToggle }) {
+export default function FaceCamera({ enabled = false, onToggle, onStream }) {
   const videoRef = useRef(null)
   const [permission, setPermission] = useState('idle')
 
   const toggleCamera = async () => {
     if (enabled) {
-      videoRef.current?.srcObject?.getTracks().forEach((track) => track.stop())
+      const stream = videoRef.current?.srcObject
+      stream?.getTracks().forEach((track) => track.stop())
+      if (videoRef.current) videoRef.current.srcObject = null
+      onStream?.(null)
       onToggle?.(false)
       setPermission('idle')
       return
@@ -14,11 +17,12 @@ export default function FaceCamera({ enabled = false, onToggle }) {
 
     try {
       if (navigator.mediaDevices?.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           videoRef.current.play()
         }
+        onStream?.(stream)
       }
       setPermission('granted')
       onToggle?.(true)

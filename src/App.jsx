@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import AvatarRenderer from './components/AvatarRenderer'
 import VideoStream from './components/VideoStream'
 import { createRoom, getConnectionHealth } from './api/realtimeAPI'
 import { createRealtimeSync } from './services/RealtimeSync'
+import { createWebRTCSession } from './services/WebRTCSession.js'
 import AuthScreen from './components/AuthScreen'
 import AdminDashboard from './components/AdminDashboard'
 import IdentityLab from './components/IdentityLab'
@@ -93,6 +94,9 @@ export default function App() {
   const [presence, setPresence] = useState(null)
   const [room, setRoom] = useState(null)
   const [health, setHealth] = useState(getConnectionHealth())
+  const [remoteStream, setRemoteStream] = useState(null)
+  const syncRef = useRef(null)
+  const rtcRef = useRef(null)
 
   useEffect(() => {
     if (!supabase) { setSession(null); return }
@@ -113,11 +117,31 @@ export default function App() {
   }, [session])
 
   useEffect(() => {
-    const sync = createRealtimeSync({ roomId: room?.id, onEvent: (event) => {
+    if (!room?.id) {
+      setRemoteStream(null)
+      return undefined
+    }
+    let active = true
+    const sync = createRealtimeSync({ roomId: room.id, onEvent: (event) => {
       if (event.type === 'presence') setPresence(event.value)
+      if (['offer', 'answer', 'ice'].includes(event.type)) void rtcRef.current?.handleSignal(event)
     }})
-    sync.connect()
-    return () => { sync.disconnect() }
+    const rtc = createWebRTCSession({
+      sync,
+      onRemoteStream: (stream) => { if (active) setRemoteStream(stream) },
+      onStateChange: (state) => { if (state === 'connected') setPresence((value) => value ?? 1) },
+    })
+    syncRef.current = sync
+    rtcRef.current = rtc
+    void sync.connect()
+    return () => {
+      active = false
+      rtc.close()
+      void sync.disconnect()
+      syncRef.current = null
+      rtcRef.current = null
+      setRemoteStream(null)
+    }
   }, [room?.id])
 
   const dateLabel = useMemo(
@@ -213,7 +237,7 @@ export default function App() {
 
           <section className="metrics-grid"><MetricCard label="Live rooms" value={String(sessions.length).padStart(2, "0")} detail="From your workspace" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={presence == null ? '—' : `${presence} active`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="—" detail={health.latencyMs == null ? health.status : `${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
 
-          <div className="dashboard-split"><VideoStream cameraEnabled={cameraEnabled} onCameraToggle={setCameraEnabled} expression={expression} onOpenRoom={openRoom} /><aside className="signal-side"><div className="signal-side-heading"><div><div className="section-kicker"><span className="section-index">02</span><span>Signal monitor</span></div><h3>Everything<br /><em>in sync.</em></h3></div><SignalPill>Live</SignalPill></div><div className="signal-summary"><div className="signal-summary-top"><span>CONNECTION QUALITY</span><strong>{health.status.toUpperCase()}</strong></div><div className="signal-waveform">{[30, 56, 43, 75, 48, 91, 57, 35, 65, 85, 47, 72, 37, 59, 81, 44, 63, 31, 55, 77].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div><div className="signal-time"><span>00:12:42</span><span>{health.latencyMs}ms latency</span></div></div><div className="conversation-card"><div className="conversation-top"><span>Latest exchange</span><button type="button" onClick={() => notify('Transcript is ready to review.')}>View transcript ↗</button></div><div className="quote-mark">“</div><p>We could make the first moment feel less like an introduction, and more like an <em>arrival.</em></p><div className="transcript-by"><span className="mini-avatar">AS</span><span>Adrian · just now</span><span className="confidence">98% clear</span></div></div><div className="signal-footer"><span><span className="secure-icon">✦</span> End-to-end encrypted</span><button type="button" onClick={() => setVoiceMode(!voiceMode)} className={`voice-toggle ${voiceMode ? 'is-on' : ''}`}><span>{voiceMode ? 'Voice mode' : 'Text mode'}</span><i /></button></div></aside></div>
+          <div className="dashboard-split"><VideoStream cameraEnabled={cameraEnabled} onCameraToggle={setCameraEnabled} onLocalStream={(stream) => { if (stream) { void rtcRef.current?.attachLocalStream(stream); void rtcRef.current?.createOffer() } else { rtcRef.current?.close() } }} remoteStream={remoteStream} onOpenRoom={openRoom} /><aside className="signal-side"><div className="signal-side-heading"><div><div className="section-kicker"><span className="section-index">02</span><span>Signal monitor</span></div><h3>Everything<br /><em>in sync.</em></h3></div><SignalPill>Live</SignalPill></div><div className="signal-summary"><div className="signal-summary-top"><span>CONNECTION QUALITY</span><strong>{health.status.toUpperCase()}</strong></div><div className="signal-waveform">{[30, 56, 43, 75, 48, 91, 57, 35, 65, 85, 47, 72, 37, 59, 81, 44, 63, 31, 55, 77].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div><div className="signal-time"><span>00:12:42</span><span>{health.latencyMs}ms latency</span></div></div><div className="conversation-card"><div className="conversation-top"><span>Latest exchange</span><button type="button" onClick={() => notify('Transcript is ready to review.')}>View transcript ↗</button></div><div className="quote-mark">“</div><p>We could make the first moment feel less like an introduction, and more like an <em>arrival.</em></p><div className="transcript-by"><span className="mini-avatar">AS</span><span>Adrian · just now</span><span className="confidence">98% clear</span></div></div><div className="signal-footer"><span><span className="secure-icon">✦</span> End-to-end encrypted</span><button type="button" onClick={() => setVoiceMode(!voiceMode)} className={`voice-toggle ${voiceMode ? 'is-on' : ''}`}><span>{voiceMode ? 'Voice mode' : 'Text mode'}</span><i /></button></div></aside></div>
 
           <section className="bottom-grid"><div className="sessions-card"><div className="card-heading"><div><div className="section-kicker"><span className="section-index">03</span><span>Upcoming</span></div><h3>Your rooms</h3></div><button type="button" className="view-all" onClick={() => navClick('Live rooms')}>View all <span>↗</span></button></div><div className="session-list">{sessions.map((session) => <div className="session-row" key={session.name}><div className={`session-avatar session-avatar--${session.color}`}>{session.guest.split(' ').map(n => n[0]).join('')}</div><div className="session-main"><strong>{session.name}</strong><span>{session.guest} <i /> {session.time}</span></div><span className={`session-type session-type--${session.type === 'AI room' ? 'ai' : 'private'}`}>{session.type}</span><span className={`session-state session-state--${session.state.toLowerCase()}`}><i /> {session.state}</span><button type="button" className="row-more" aria-label={`More options for ${session.name}`}>•••</button></div>)}</div></div><div className="activity-card"><div className="card-heading"><div><div className="section-kicker"><span className="section-index">04</span><span>Pulse</span></div><h3>Recent activity</h3></div><button type="button" className="more-button" aria-label="More activity options">•••</button></div><div className="activity-list"><Activity icon="↗" title="Room exported" text="Creative direction" time="12m" tone="violet" /><Activity icon="✦" title="Phoenix updated" text="New presence model" time="1h" tone="lime" /><Activity icon="◉" title="New room created" text="Product discovery" time="3h" tone="blue" /></div></div></section>
           </>}
