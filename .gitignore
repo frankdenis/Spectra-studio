@@ -2,9 +2,12 @@ node_modules/
 dist/
 .vite/
 .npm/
+.data/
+.data-test/
 uploads/
 pdf-pages/
 .DS_Store
 *.log
 .env
 .env.*
+!.env.example

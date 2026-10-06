@@ -1,27 +1,34 @@
 # Helio — Realtime AI Video Room
 
-A focused dashboard for starting high-presence AI video conversations. The current build is a polished front-end prototype with a Phoenix-ready architecture: avatar rendering, camera permissions, expression control, presence syncing, and a realtime API boundary are separated into small modules.
+Helio is a responsive workspace for high-presence AI video conversations. It includes the polished dashboard, a local API, a WebSocket signaling server, a WebRTC session adapter, PWA install metadata, tests, and CI.
 
 ## Run locally
 
 ```bash
+cp .env.example .env
 npm install
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal. Production output can be generated with `npm run build`.
+`npm run dev` starts both services:
 
-## Product map
+- Frontend: `http://localhost:5173`
+- API and WebSocket server: `http://localhost:3001`
 
-- `src/components/` — visual pieces for the room and avatar layer.
-- `src/api/` — replaceable network boundaries for avatar and realtime services.
-- `src/models/PhoenixIntegration.js` — model capability contract.
-- `src/services/` — face presence and sync adapters.
-- `docs/api-reference.md` — integration notes and event shapes.
+The frontend proxies `/api`, `/health`, and `/ws` to the API so browser code never calls localhost directly in a deployed environment. Production output can be generated with `npm run build`, and tests run with `npm test`.
 
-## Interaction notes
+## What is included
 
-- **Launch live room** moves the interface into a live state and updates the activity rail.
-- **Enable camera** requests browser permission when available; denied permission falls back to a simulated local feed.
-- The **Expression** control updates the placeholder Phoenix avatar state.
-- The dashboard is intentionally usable without credentials or backend services; all network calls are safe placeholders.
+- `src/components/` — responsive room, camera, avatar, and expression UI.
+- `src/api/` — browser API clients with real HTTP boundaries.
+- `src/models/PhoenixIntegration.js` — Phoenix capability contract.
+- `src/services/RealtimeSync.js` — WebSocket sync with a safe offline fallback.
+- `src/services/WebRTCSession.js` — browser `RTCPeerConnection` adapter.
+- `server/` — Express API, signed development tokens, JSON-backed local store, and WebSocket signaling.
+- `tests/` — auth, store, API, and server smoke tests.
+- `docs/api-reference.md` — endpoint and production integration notes.
+- `.github/workflows/blank.yml` — install, test, build, and dependency audit CI.
+
+## Before production
+
+The local server is intentionally credential-free for development. Replace the JSON store with a managed database, configure a real identity provider, add TURN credentials, connect the server-side Phoenix/voice provider adapter, and set a strong `AUTH_SECRET`. Transcript retention and user consent should be implemented before storing real conversations.
