@@ -1,7 +1,10 @@
 import crypto from 'node:crypto'
 
-const secret = process.env.AUTH_SECRET || 'local-development-secret-change-me'
 const isProduction = process.env.NODE_ENV === 'production'
+const secret = process.env.AUTH_SECRET || 'local-development-secret-change-me'
+if (isProduction && (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32)) {
+  throw new Error('AUTH_SECRET must be set to a random value of at least 32 characters in production.')
+}
 
 function encode(value) {
   return Buffer.from(JSON.stringify(value)).toString('base64url')
