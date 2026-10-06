@@ -3,13 +3,24 @@ import AvatarRenderer from './components/AvatarRenderer'
 import VideoStream from './components/VideoStream'
 import { createRoom, getConnectionHealth } from './api/realtimeAPI'
 import { createRealtimeSync } from './services/RealtimeSync'
+import AuthScreen from './components/AuthScreen'
+import AdminDashboard from './components/AdminDashboard'
+import IdentityLab from './components/IdentityLab'
+import StudioHub from './components/StudioHub'
+import AccountCenter from './components/AccountCenter'
+import PlatformCenter from './components/PlatformCenter'
+import { supabase } from './lib/supabase'
+import { isAdminUser } from './adminConfig'
 
 const navItems = [
   { label: 'Dashboard', icon: '⌂' },
-  { label: 'Live rooms', icon: '◉', count: 2 },
-  { label: 'People', icon: '◎' },
-  { label: 'Insights', icon: '⌁' },
-  { label: 'Recordings', icon: '▣' },
+  { label: 'Search', icon: '⌕' },
+  { label: 'Notifications', icon: '♧' },
+  { label: 'Create', icon: '✦' },
+  { label: 'Communicate', icon: '◉' },
+  { label: 'Library', icon: '▣' },
+  { label: 'Identity Lab', icon: '◈' },
+  { label: 'Live rooms', icon: '◎' },
 ]
 
 const sessions = [
@@ -46,7 +57,7 @@ function SignalPill({ children, tone = 'green' }) {
   return <span className={`signal-pill signal-pill--${tone}`}><i />{children}</span>
 }
 
-function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify }) {
+function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify, sessions = [] }) {
   const panelData = {
     'Live rooms': { eyebrow: 'LIVE STUDIO', title: 'Rooms that stay in the moment.', copy: 'Open, monitor, and shape every active AI conversation from one place.' },
     People: { eyebrow: 'PEOPLE', title: 'Your conversation circle.', copy: 'Guests, collaborators, and recurring voices in one calm workspace.' },
@@ -67,53 +78,94 @@ function WorkspacePanel({ activeNav, onLaunch, onInvite, onBack, onNotify }) {
 }
 
 export default function App() {
+  const [session, setSession] = useState(undefined)
+  const [authMode, setAuthMode] = useState('signin')
+  const [showAdmin, setShowAdmin] = useState(false)
+  const [sessions, setSessions] = useState([])
   const [activeNav, setActiveNav] = useState('Dashboard')
-  const [isLive, setIsLive] = useState(true)
+  const [isLive, setIsLive] = useState(false)
   const [cameraEnabled, setCameraEnabled] = useState(false)
   const [expression, setExpression] = useState('Focused')
   const [voiceMode, setVoiceMode] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
+  const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [showToast, setShowToast] = useState(false)
-  const [presence, setPresence] = useState(96)
-  const [room, setRoom] = useState(() => createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' }))
+  const [presence, setPresence] = useState(null)
+  const [room, setRoom] = useState(null)
   const [health, setHealth] = useState(getConnectionHealth())
 
   useEffect(() => {
-    const sync = createRealtimeSync({ onEvent: (event) => { if (event.type === 'presence') setPresence(event.value) } })
-    sync.connect()
-    const healthTimer = setInterval(() => setHealth(getConnectionHealth()), 5000)
-    return () => { sync.disconnect(); clearInterval(healthTimer) }
+    if (!supabase) { setSession(null); return }
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') setAuthMode('reset')
+      if (event === 'SIGNED_IN' && authMode !== 'reset') setAuthMode('signin')
+      setSession(nextSession)
+    })
+    return () => listener.subscription.unsubscribe()
   }, [])
 
-  const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()), [])
+  useEffect(() => {
+    if (!supabase || !session) return
+    supabase.from('rooms').select('id,title,status,created_at').order('created_at', { ascending: false }).limit(10).then(({ data }) => {
+      if (data) setSessions(data.map(row => ({ name: row.title, guest: 'Private room', time: new Date(row.created_at).toLocaleString(), type: 'Private', color: 'violet', state: row.status })))
+    })
+  }, [session])
+
+  useEffect(() => {
+    const sync = createRealtimeSync({ roomId: room?.id, onEvent: (event) => {
+      if (event.type === 'presence') setPresence(event.value)
+    }})
+    sync.connect()
+    return () => { sync.disconnect() }
+  }, [room?.id])
+
+  const dateLabel = useMemo(
+    () => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()),
+    []
+  )
+
+  const signOut = async () => {
+    if (supabase) await supabase.auth.signOut()
+    setShowAdmin(false)
+  }
 
   const notify = (message = 'Your workspace is up to date.') => {
     setShowToast(message)
     window.setTimeout(() => setShowToast(false), 3200)
   }
 
-  const launchRoom = () => {
-    const nextRoom = createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' })
-    setRoom(nextRoom)
-    setIsLive(true)
-    notify('Your live room is ready.')
+  const launchRoom = async () => {
+    try {
+      const nextRoom = await createRoom({ title: 'Aurora / presence room', avatarId: 'aurora' })
+      setRoom(nextRoom)
+      setIsLive(true)
+      setSessions(current => [{ name: nextRoom.title, guest: 'Private room', time: new Date(nextRoom.createdAt).toLocaleString(), type: 'Private', color: 'violet', state: nextRoom.status }, ...current])
+      notify('Your live room was created.')
+    } catch (error) { notify(error.message || 'Room creation failed.') }
   }
 
   const openRoom = () => {
     setActiveNav('Dashboard')
-    setIsLive(true)
+    if (!room) return notify('Create a live room first.')
     window.setTimeout(() => document.querySelector('.stream-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
   }
 
   const navClick = (label) => {
     setActiveNav(label)
-    if (label !== 'Dashboard') notify(`${label} is connected to your workspace.`)
   }
+
+  if (session === undefined) return <main className="auth-screen"><div className="auth-card"><span className="auth-kicker">SPECTRA STUDIO</span><h1>Securing your workspace…</h1></div></main>
+  if (!session || authMode === 'reset') return <AuthScreen initialMode={authMode} onAuthenticated={(nextSession) => {
+    setAuthMode('signin')
+    setSession(nextSession)
+  }} />
+  if (showAdmin && isAdminUser(session.user)) return <AdminDashboard user={session.user} onClose={() => setShowAdmin(false)} onSignOut={signOut} />
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand-lockup"><span className="brand-mark"><i /><i /><i /></span><span>helio<span className="brand-dot">.</span></span></div>
+        <div className="brand-lockup"><span className="brand-mark"><i /><i /><i /></span><span>spectra<span className="brand-dot">.</span></span></div>
         <div className="workspace-switcher"><div className="workspace-avatar">A</div><div><b>Arc / Studio</b><span>Personal workspace</span></div><span className="chevron">⌄</span></div>
         <nav className="primary-nav" aria-label="Primary navigation">
           <span className="nav-label">Workspace</span>
@@ -123,31 +175,50 @@ export default function App() {
         <nav className="primary-nav" aria-label="Tools navigation">
           <span className="nav-label">Studio</span>
           <button type="button" className="nav-item" onClick={() => setShowInvite(true)}><Icon>＋</Icon><span>Invite someone</span></button>
-          <button type="button" className="nav-item" onClick={() => notify('Library sync is complete.')}><Icon>⌑</Icon><span>Shared library</span></button>
-          <button type="button" className="nav-item" onClick={() => notify('Settings are ready to configure.')}><Icon>⚙</Icon><span>Settings</span></button>
+          <button type="button" className="nav-item" onClick={() => setActiveNav('Profile')}><Icon>◎</Icon><span>Profile</span></button>
+          <button type="button" className="nav-item" onClick={() => setActiveNav('Settings')}><Icon>⚙</Icon><span>Settings</span></button>
+          <button type="button" className="nav-item" onClick={() => setActiveNav('Security')}><Icon>◈</Icon><span>Security</span></button>
+          <button type="button" className="nav-item" onClick={() => setActiveNav('Billing')}><Icon>◇</Icon><span>Billing</span></button>
         </nav>
-        <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row"><div className="profile-avatar">AS</div><div><strong>Adrian Stone</strong><span>Workspace owner</span></div><button type="button" aria-label="Account menu">•••</button></div></div>
+        <div className="sidebar-bottom"><div className="upgrade-card"><span className="upgrade-tag">PHOENIX / NEW</span><strong>Presence, amplified.</strong><span>Shape the tone of every room with Aurora.</span><button type="button" onClick={launchRoom}>Open live room <span>→</span></button></div><div className="account-row account-row--menu">
+          <button type="button" className="account-identity" onClick={() => setShowAccountMenu(v => !v)} aria-expanded={showAccountMenu}>
+            <div className="profile-avatar">AS</div>
+            <div><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong><span>{isAdminUser(session.user) ? 'Administrator' : 'Workspace member'}</span></div>
+          </button>
+          <button type="button" className="account-menu-trigger" aria-label="Account menu" onClick={() => setShowAccountMenu(v => !v)}>•••</button>
+          {showAccountMenu && <div className="account-menu">
+            <div className="account-menu-email">{session.user.email}</div>
+            {isAdminUser(session.user) && <button type="button" onClick={() => { setShowAccountMenu(false); setShowAdmin(true) }}>⚙ Admin Dashboard</button>}
+            <button type="button" onClick={() => { setShowAccountMenu(false); signOut() }}>↪ Sign out</button>
+          </div>}
+        </div></div>
       </aside>
 
       <main className="main-canvas">
-        <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><i /><i /><i /></span></div><div className="search-box"><span>⌕</span><input aria-label="Search" placeholder="Search rooms, guests, or transcripts..." /></div><div className="top-actions"><span className="date-readout">{dateLabel}</span><button type="button" className="icon-button notification-button" aria-label="Notifications">♧<i /></button><button type="button" className="language-button"><span className="globe">◎</span> EN <span>⌄</span></button><div className="top-profile"><div className="profile-avatar">AS</div><div><span>Good morning</span><strong>Adrian</strong></div><span className="chevron">⌄</span></div></div></header>
+        <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><i /><i /><i /></span></div><div className="search-box"><span>⌕</span><input aria-label="Search" placeholder="Search rooms, guests, media, or generations..." onFocus={() => setActiveNav("Search")} onKeyDown={(event) => { if (event.key === "Enter") setActiveNav("Search") }} /></div><div className="top-actions"><span className="date-readout">{dateLabel}</span><button type="button" className="icon-button notification-button" aria-label="Notifications" onClick={() => setActiveNav("Notifications")}>♧<i /></button><button type="button" className="language-button"><span className="globe">◎</span> EN <span>⌄</span></button><div className="top-profile top-profile--clickable" role="button" tabIndex="0" onClick={() => setShowAccountMenu(v => !v)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setShowAccountMenu(v => !v) }}><div className="profile-avatar">AS</div><div><span>Good morning</span><strong>{session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Account'}</strong></div><span className="chevron">⌄</span></div></div></header>
 
         <div className={`page-content ${activeNav !== 'Dashboard' ? 'page-content--inner-view' : ''}`}>
-          {activeNav !== 'Dashboard' && <WorkspacePanel activeNav={activeNav} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {activeNav === 'Identity Lab' && <IdentityLab user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Create','Communicate','Library'].includes(activeNav) && <StudioHub section={activeNav} user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Profile','Settings'].includes(activeNav) && <AccountCenter mode={activeNav} user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Search','Notifications','Billing','Security'].includes(activeNav) && <PlatformCenter mode={activeNav} user={session.user} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {['Live rooms','People','Insights','Recordings'].includes(activeNav) && <WorkspacePanel activeNav={activeNav} sessions={sessions} onLaunch={launchRoom} onInvite={() => setShowInvite(true)} onBack={() => setActiveNav('Dashboard')} onNotify={notify} />}
+          {activeNav === 'Dashboard' && <>
           <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line" /> WELCOME BACK, GOOD MORNING <span className="sunmark">✦</span></div><h1>Your presence, <em>in focus.</em></h1><p>Design better conversations with a little more room to be human.</p></div><div className="status-summary"><span className="status-pulse" /> All systems operational <span className="status-divider" /> Phoenix v1.4</div></section>
 
           <section className="hero-room">
             <div className="hero-copy"><div className="hero-copy-kicker"><span className="sparkle-icon">✦</span> A NEW KIND OF VIDEO ROOM</div><h2>Make every<br />conversation feel <span>closer.</span></h2><p>Meet Aurora, your realtime AI presence designed to listen, reflect, and move the conversation forward.</p><div className="hero-actions"><button type="button" className="primary-button" onClick={launchRoom}>{isLive ? 'Open live room' : 'Launch live room'} <span>↗</span></button><button type="button" className="ghost-button" onClick={() => setShowInvite(true)}>Invite a guest <span>＋</span></button></div><div className="hero-meta"><span><i className="meta-icon">◉</i> Phoenix engine</span><span><i className="meta-icon">⌁</i> Multimodal</span><span><i className="meta-icon">◌</i> Private by default</span></div></div>
-            <div className="hero-visual"><div className="visual-glow" /><div className="visual-grid" /><div className="visual-label visual-label--top"><span className="live-dot" /> LIVE ROOM / 001 <span>4K · 60 FPS</span></div><AvatarRenderer name="Aurora" mood={expression.toLowerCase()} /><div className="orbit orbit--one" /><div className="orbit orbit--two" /><div className="hero-status-card"><div className="hero-status-heading"><span>Presence quality</span><span>LIVE</span></div><div className="quality-row"><strong>{presence}%</strong><div className="quality-meter"><i style={{ width: `${presence}%` }} /></div></div><span>Listening with intention</span></div><div className="visual-label visual-label--bottom"><span className="wave-mini"><i /><i /><i /><i /><i /></span> Encrypted · Low latency</div></div>
+            <div className="hero-visual"><div className="visual-glow" /><div className="visual-grid" /><div className="visual-label visual-label--top"><span className="live-dot" /> LIVE ROOM / 001 <span>4K · 60 FPS</span></div><AvatarRenderer name="Aurora" mood={expression.toLowerCase()} /><div className="orbit orbit--one" /><div className="orbit orbit--two" /><div className="hero-status-card"><div className="hero-status-heading"><span>Presence quality</span><span>LIVE</span></div><div className="quality-row"><strong>{presence == null ? '—' : `${presence}%`}</strong><div className="quality-meter"><i style={{ width: `${presence}%` }} /></div></div><span>Listening with intention</span></div><div className="visual-label visual-label--bottom"><span className="wave-mini"><i /><i /><i /><i /><i /></span> Encrypted · Low latency</div></div>
           </section>
 
-          <section className="metrics-grid"><MetricCard label="Live rooms" value="03" detail="+2 this week" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={`${presence}.8%`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="99.97%" detail={`${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
+          <section className="metrics-grid"><MetricCard label="Live rooms" value={String(sessions.length).padStart(2, "0")} detail="From your workspace" tone="purple"><SparkBars color="purple" /></MetricCard><MetricCard label="Avg. presence" value={presence == null ? '—' : `${presence} active`} detail="+4.2% vs last week" tone="mint"><SparkBars color="mint" /></MetricCard><MetricCard label="Stream health" value="—" detail={health.latencyMs == null ? health.status : `${health.latencyMs}ms latency · ${health.packetLoss}% loss`} tone="blue"><div className="health-ring"><span>GOOD</span></div></MetricCard><div className="quick-launch"><span className="quick-kicker">QUICK LAUNCH</span><strong>Start a new<br /><em>conversation.</em></strong><button type="button" onClick={launchRoom}>Open live room <span>↗</span></button><span className="quick-orb" /></div></section>
 
           <div className="dashboard-split"><VideoStream cameraEnabled={cameraEnabled} onCameraToggle={setCameraEnabled} expression={expression} onOpenRoom={openRoom} /><aside className="signal-side"><div className="signal-side-heading"><div><div className="section-kicker"><span className="section-index">02</span><span>Signal monitor</span></div><h3>Everything<br /><em>in sync.</em></h3></div><SignalPill>Live</SignalPill></div><div className="signal-summary"><div className="signal-summary-top"><span>CONNECTION QUALITY</span><strong>{health.status.toUpperCase()}</strong></div><div className="signal-waveform">{[30, 56, 43, 75, 48, 91, 57, 35, 65, 85, 47, 72, 37, 59, 81, 44, 63, 31, 55, 77].map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div><div className="signal-time"><span>00:12:42</span><span>{health.latencyMs}ms latency</span></div></div><div className="conversation-card"><div className="conversation-top"><span>Latest exchange</span><button type="button" onClick={() => notify('Transcript is ready to review.')}>View transcript ↗</button></div><div className="quote-mark">“</div><p>We could make the first moment feel less like an introduction, and more like an <em>arrival.</em></p><div className="transcript-by"><span className="mini-avatar">AS</span><span>Adrian · just now</span><span className="confidence">98% clear</span></div></div><div className="signal-footer"><span><span className="secure-icon">✦</span> End-to-end encrypted</span><button type="button" onClick={() => setVoiceMode(!voiceMode)} className={`voice-toggle ${voiceMode ? 'is-on' : ''}`}><span>{voiceMode ? 'Voice mode' : 'Text mode'}</span><i /></button></div></aside></div>
 
           <section className="bottom-grid"><div className="sessions-card"><div className="card-heading"><div><div className="section-kicker"><span className="section-index">03</span><span>Upcoming</span></div><h3>Your rooms</h3></div><button type="button" className="view-all" onClick={() => navClick('Live rooms')}>View all <span>↗</span></button></div><div className="session-list">{sessions.map((session) => <div className="session-row" key={session.name}><div className={`session-avatar session-avatar--${session.color}`}>{session.guest.split(' ').map(n => n[0]).join('')}</div><div className="session-main"><strong>{session.name}</strong><span>{session.guest} <i /> {session.time}</span></div><span className={`session-type session-type--${session.type === 'AI room' ? 'ai' : 'private'}`}>{session.type}</span><span className={`session-state session-state--${session.state.toLowerCase()}`}><i /> {session.state}</span><button type="button" className="row-more" aria-label={`More options for ${session.name}`}>•••</button></div>)}</div></div><div className="activity-card"><div className="card-heading"><div><div className="section-kicker"><span className="section-index">04</span><span>Pulse</span></div><h3>Recent activity</h3></div><button type="button" className="more-button" aria-label="More activity options">•••</button></div><div className="activity-list"><Activity icon="↗" title="Room exported" text="Creative direction" time="12m" tone="violet" /><Activity icon="✦" title="Phoenix updated" text="New presence model" time="1h" tone="lime" /><Activity icon="◉" title="New room created" text="Product discovery" time="3h" tone="blue" /></div></div></section>
+          </>}
         </div>
-        <footer className="page-footer"><span>HELIO / A PLACE FOR PRESENCE</span><span>Build 1.4.0 <i /> Lagos, NG</span></footer>
+        <footer className="page-footer"><span>SPECTRA / A PLACE FOR PRESENCE</span><span>Build 1.4.0 <i /> Lagos, NG</span></footer>
       </main>
 
       {showInvite && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowInvite(false)}><div className="invite-modal"><button className="modal-close" type="button" onClick={() => setShowInvite(false)}>×</button><div className="modal-orb"><span>＋</span></div><div className="eyebrow"><span className="eyebrow-line" /> ADD A HUMAN</div><h2>Bring someone<br /><em>into the room.</em></h2><p>Share a private link. They can join from any browser, no account required.</p><label className="input-label">Guest email or name<input type="text" placeholder="someone@studio.com" autoFocus /></label><button type="button" className="primary-button modal-submit" onClick={() => { setShowInvite(false); notify('Your invite link is ready.') }}>Create invite link <span>↗</span></button><span className="modal-footnote">The room stays private until you share the link.</span></div></div>}

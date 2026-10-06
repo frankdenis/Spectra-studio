@@ -1,6 +1,6 @@
 {
-  "name": "realtime-ai-video-call",
-  "version": "1.0.0",
+  "name": "spectra-studio",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,8 +13,11 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.75.0",
     "@vitejs/plugin-react": "6.1.1",
     "express": "5.1.0",
+    "livekit-client": "2.15.6",
+    "lucide-react": "0.468.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "vite": "8.3.2",

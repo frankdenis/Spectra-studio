@@ -1,4 +1,4 @@
-name: CI
+name: Spectra Studio CI
 
 on:
   push:
@@ -7,22 +7,25 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Use Node.js 20
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Run tests
+      - name: Test
         run: npm test
-      - name: Build frontend
+      - name: Production build
         run: npm run build
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
